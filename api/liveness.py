@@ -1,11 +1,12 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import io
+import os
 import base64
 import numpy as np
-import cv2
 from PIL import Image
 import cgi
+from deepface import DeepFace
 
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -27,14 +28,29 @@ class Handler(BaseHTTPRequestHandler):
                     image_data = fileitem.file.read()
                     
                     try:
-                        # Process the image
-                        result = self.process_image(image_data)
+                        # Save image to a temporary file
+                        temp_dir = "/tmp"
+                        os.makedirs(temp_dir, exist_ok=True)
+                        temp_path = os.path.join(temp_dir, "face.jpg")
+                        
+                        with open(temp_path, "wb") as f:
+                            f.write(image_data)
+                        
+                        # Process the image using DeepFace
+                        result = self.process_image(temp_path)
                         
                         # Send response
                         self.send_response(200)
                         self.send_header('Content-type', 'application/json')
                         self.end_headers()
                         self.wfile.write(json.dumps(result).encode())
+                        
+                        # Clean up
+                        try:
+                            os.remove(temp_path)
+                        except:
+                            pass
+                            
                         return
                     except Exception as e:
                         # Send error response
@@ -50,46 +66,50 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps({"error": "Invalid request"}).encode())
     
-    def process_image(self, image_data):
-        # Convert image data to numpy array
-        image = Image.open(io.BytesIO(image_data))
-        image_np = np.array(image)
-        
-        # Convert to BGR (OpenCV format) if it's RGB
-        if len(image_np.shape) == 3 and image_np.shape[2] == 3:
-            image_np = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
-        
-        # Convert to grayscale for face detection
-        gray = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
-        
-        # Load face detector
-        face_cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        face_cascade = cv2.CascadeClassifier(face_cascade_path)
-        
-        # Detect faces
-        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-        
-        if len(faces) == 0:
-            return {"error": "No face detected in the image"}
-        
-        # Get the first face
-        x, y, w, h = faces[0]
-        
-        # Calculate eye distance (simplified)
-        eye_distance = w * 0.3
-        
-        # In a real implementation, you would use a proper liveness detection model here
-        # This is just a dummy implementation
-        
-        # Dummy liveness score calculation
-        # In a real implementation, this would be the output of a ML model
-        antispoof_score = 0.92
-        confidence = 0.85
-        is_real = antispoof_score > 0.5
-        
-        return {
-            "is_real": is_real,
-            "antispoof_score": antispoof_score,
-            "confidence": confidence,
-            "eye_distance": float(eye_distance)
-        }
+    def process_image(self, image_path):
+        try:
+            # Analyze face
+            face_analysis = DeepFace.analyze(
+                img_path=image_path,
+                actions=['age', 'gender', 'race', 'emotion'],
+                detector_backend='opencv'
+            )
+            
+            if not face_analysis or len(face_analysis) == 0:
+                return {"error": "No face detected in the image"}
+            
+            face_data = face_analysis[0]
+            
+            # Get face region
+            region = face_data.get('region', {})
+            width = region.get('w', 0)
+            
+            # Calculate eye distance (simplified)
+            eye_distance = width * 0.3
+            
+            # In a real implementation, you would use a proper liveness detection model
+            # This is a simplified implementation using confidence from DeepFace
+            
+            # Extract useful information
+            dominant_emotion = face_data.get('dominant_emotion', 'unknown')
+            emotion_score = face_data.get('emotion', {}).get(dominant_emotion, 0)
+            gender = face_data.get('dominant_gender', 'unknown')
+            age = face_data.get('age', 0)
+            
+            # Calculate a dummy liveness score based on confidence
+            # In a real implementation, you would use a specialized anti-spoofing model
+            antispoof_score = min(emotion_score / 100 + 0.5, 0.99)
+            confidence = emotion_score / 100
+            is_real = antispoof_score > 0.5
+            
+            return {
+                "is_real": is_real,
+                "antispoof_score": antispoof_score,
+                "confidence": confidence,
+                "eye_distance": float(eye_distance),
+                "age": age,
+                "gender": gender,
+                "emotion": dominant_emotion
+            }
+        except Exception as e:
+            return {"error": f"Error analyzing face: {str(e)}"}

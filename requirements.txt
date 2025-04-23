@@ -1,9 +1,4 @@
-fastapi
-uvicorn
-deepface
-opencv-python-headless
-numpy
-python-multipart
-tf-keras
 python-telegram-bot>=20.0
-requests>=
+requests>=2.28.0
+numpy>=1.22.0
+pillow>=9.0.0

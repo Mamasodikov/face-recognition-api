@@ -22,8 +22,8 @@ A Telegram bot that analyzes face images for liveness detection, deployed on Ver
 1. Fork or clone this repository to your GitHub account
 2. Connect your GitHub repository to Vercel
 3. Configure the deployment:
-    - Set the Framework Preset to "Other"
-    - Add the environment variable `TELEGRAM_BOT_TOKEN` with your bot token
+   - Set the Framework Preset to "Other"
+   - Add the environment variable `TELEGRAM_BOT_TOKEN` with your bot token
 4. Deploy the project
 
 ### 3. Set Up the Webhook
