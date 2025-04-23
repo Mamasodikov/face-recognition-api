@@ -1,8 +1,8 @@
+from http.server import BaseHTTPRequestHandler
 import json
 import os
 import requests
 import traceback
-from http.server import BaseHTTPRequestHandler
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 DEBUG_CHAT_ID = os.environ.get("DEBUG_CHAT_ID")
@@ -26,18 +26,21 @@ def log_to_telegram(message):
         except:
             pass
 
-# This is the handler function expected by Vercel
-def handler(request):
-    try:
-        if request.method == "GET":
-            return {
-                "statusCode": 200,
-                "body": "Telegram bot is live! Use POST to interact."
-            }
-
-        if request.method == "POST":
-            # Parse request body
-            body = json.loads(request.body)
+# Required handler class for Vercel Python functions
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write("Telegram bot is live! Use POST to interact.".encode())
+        return
+    
+    def do_POST(self):
+        try:
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            body = json.loads(post_data.decode())
+            
             if "message" in body:
                 msg = body["message"]
                 chat_id = msg["chat"]["id"]
@@ -50,20 +53,15 @@ def handler(request):
                 else:
                     send_telegram_message(chat_id, f"You said: {text}")
 
-            return {
-                "statusCode": 200,
-                "body": "OK"
-            }
-
-        return {
-            "statusCode": 405,
-            "body": "Method not allowed"
-        }
-
-    except Exception as e:
-        error_msg = f"{str(e)}\n{traceback.format_exc()}"
-        log_to_telegram(error_msg)
-        return {
-            "statusCode": 500,
-            "body": f"Error: {error_msg}"
-        }
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write("OK".encode())
+            
+        except Exception as e:
+            error_msg = f"{str(e)}\n{traceback.format_exc()}"
+            log_to_telegram(error_msg)
+            self.send_response(500)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(f"Error: {error_msg}".encode())
