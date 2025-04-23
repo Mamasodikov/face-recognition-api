@@ -1,87 +1,117 @@
-import os
+from http.server import BaseHTTPRequestHandler
 import json
-import logging
+import os
 import requests
-from urllib.parse import urljoin
-
-# Constants
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
-API_URL = os.environ.get("API_URL", "http://localhost:8000")  # Default to localhost if not set
+import logging
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def send_telegram_message(message):
-    """Sends a message to a Telegram chat."""
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        logging.warning("Telegram bot token or chat ID not configured. Skipping message.")
-        return False
+# Get environment variables
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+def send_telegram_message(chat_id, text):
+    """Send a message to a Telegram chat."""
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message,
-        "parse_mode": "Markdown"  # Optional: Use Markdown for formatting
+        "chat_id": chat_id,
+        "text": text
     }
     try:
         response = requests.post(url, json=payload)
-        response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
-        logging.info("Telegram message sent successfully.")
+        response.raise_for_status()
         return True
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Failed to send Telegram message: {e}")
+    except Exception as e:
+        logger.error(f"Error sending message: {e}")
         return False
 
-def handle_update(update):
-    """Handles an incoming update from the Telegram bot."""
-    if "message" in update and "text" in update["message"]:
-        text = update["message"]["text"]
-        chat_id = update["message"]["chat"]["id"]
-
-        logging.info(f"Received message: {text} from chat ID: {chat_id}")
-
-        # Check if the message is a command
-        if text.startswith("/process"):
-            image_url = text.split(" ")[1]  # Extract the image URL from the command
-            logging.info(f"Processing image URL: {image_url}")
-
-            # Call the liveness API
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        """Handle GET requests - used for webhook setup."""
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write('Telegram Bot Webhook is active!'.encode())
+        
+        # Set up webhook if requested
+        if self.path == '/setup-webhook':
             try:
-                api_endpoint = urljoin(API_URL, "/liveness")
-                response = requests.post(api_endpoint, json={"image_url": image_url})
-                response.raise_for_status()
-                data = response.json()
-
-                # Format the response
-                reply = (
-                    f"🤖 Liveness Info:\n"
-                    f"✅ Real: {data['is_real']}\n"
-                    f"🧪 Score: {data['antispoof_score']:.3f}\n"
-                    f"🔍 Confidence: {data['confidence']:.2f}\n"
-                    f"👁 Eye Distance: {data['eye_distance']:.2f}"
-                )
+                # Get the host from the headers
+                host = self.headers.get('Host', 'localhost')
+                webhook_url = f"https://{host}/api/telegram"
                 
-                # Add additional info if available
-                if 'age' in data:
-                    reply += f"\n\n👤 Additional Info:\n"
-                    reply += f"🎂 Age: {data['age']}\n"
-                    reply += f"⚧ Gender: {data['gender']}\n"
-                    reply += f"😊 Emotion: {data['emotion']}"
-
-                # Send the formatted response back to the user
-                send_telegram_message(reply)
-
-            except requests.exceptions.RequestException as e:
-                error_message = f"Error calling liveness API: {e}"
-                logging.error(error_message)
-                send_telegram_message(error_message)
+                # Set the webhook
+                set_webhook_url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={webhook_url}"
+                response = requests.get(set_webhook_url)
+                result = response.json()
+                
+                # Write the result
+                self.wfile.write(f"\nWebhook setup result: {json.dumps(result)}".encode())
+                logger.info(f"Webhook setup result: {result}")
             except Exception as e:
-                error_message = f"Error processing image: {e}"
-                logging.error(error_message)
-                send_telegram_message(error_message)
-        else:
-            # Handle other messages or commands
-            send_telegram_message("I can only process images using the /process command.")
+                self.wfile.write(f"\nError setting webhook: {str(e)}".encode())
+                logger.error(f"Error setting webhook: {e}")
+    
+    def do_POST(self):
+        """Handle POST requests - process Telegram updates."""
+        try:
+            # Get the request body
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            update = json.loads(post_data.decode())
+            
+            logger.info(f"Received update: {update}")
+            
+            # Process the update
+            if 'message' in update:
+                message = update['message']
+                chat_id = message.get('chat', {}).get('id')
+                text = message.get('text', '')
+                
+                # Handle /start command
+                if text == '/start':
+                    send_telegram_message(chat_id, "Hi 👋! Send me a face photo and I'll tell you the liveness score 🧠.")
+                
+                # Handle photos
+                if 'photo' in message:
+                    send_telegram_message(chat_id, "I received your photo! This is a simplified version that doesn't process images yet.")
+            
+            # Send response
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write('OK'.encode())
+            
+        except Exception as e:
+            logger.error(f"Error processing update: {e}")
+            self.send_response(500)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(f"Error: {str(e)}".encode())
 
-    return {"statusCode": 200}
+def lambda_handler(event, context):
+    """AWS Lambda handler."""
+    if event.get('httpMethod') == 'POST':
+        try:
+            update = json.loads(event.get('body', '{}'))
+            
+            if 'message' in update:
+                message = update['message']
+                chat_id = message.get('chat', {}).get('id')
+                text = message.get('text', '')
+                
+                # Handle /start command
+                if text == '/start':
+                    send_telegram_message(chat_id, "Hi 👋! Send me a face photo and I'll tell you the liveness score 🧠.")
+                
+                # Handle photos
+                if 'photo' in message:
+                    send_telegram_message(chat_id, "I received your photo! This is a simplified version that doesn't process images yet.")
+            
+            return {'statusCode': 200, 'body': 'OK'}
+        except Exception as e:
+            logger.error(f"Error in lambda handler: {e}")
+            return {'statusCode': 500, 'body': f"Error: {str(e)}"}
+    else:
+        return {'statusCode': 200, 'body': 'Telegram Bot Webhook is active!'}
