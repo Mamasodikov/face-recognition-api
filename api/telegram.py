@@ -2,6 +2,7 @@ import json
 import os
 import requests
 import traceback
+from http.server import BaseHTTPRequestHandler
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 DEBUG_CHAT_ID = os.environ.get("DEBUG_CHAT_ID")
@@ -25,16 +26,18 @@ def log_to_telegram(message):
         except:
             pass
 
+# This is the handler function expected by Vercel
 def handler(request):
     try:
-        if request["method"] == "GET":
+        if request.method == "GET":
             return {
                 "statusCode": 200,
                 "body": "Telegram bot is live! Use POST to interact."
             }
 
-        if request["method"] == "POST":
-            body = json.loads(request["body"])
+        if request.method == "POST":
+            # Parse request body
+            body = json.loads(request.body)
             if "message" in body:
                 msg = body["message"]
                 chat_id = msg["chat"]["id"]
