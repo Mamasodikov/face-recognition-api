@@ -5,3 +5,5 @@ opencv-python-headless
 numpy
 python-multipart
 tf-keras
+python-telegram-bot>=20.0
+requests>=
