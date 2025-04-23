@@ -1,4 +1,6 @@
-python-telegram-bot>=20.0
-requests>=2.28.0
-numpy>=1.22.0
-pillow>=9.0.0
+requests==2.31.0
+deepface==0.0.79
+numpy>=1.21.6
+opencv-python-headless>=4.5.5.64
+tensorflow>=2.8.0
+mtcnn>=0.1.1
