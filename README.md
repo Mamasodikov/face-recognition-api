@@ -1,38 +1,40 @@
-# Telegram Liveness Detection Bot
+# PremiumSoft.uz Info Bot
 
-A Telegram bot that analyzes face images for liveness detection, deployed on Vercel.
+A simple Telegram bot that provides information about PremiumSoft.uz company and services.
 
 ## Features
 
-- Receive images from users via Telegram
-- Process images to detect faces
-- Analyze faces for liveness detection
-- Return liveness scores and other metrics
+- `/start` - Welcome message and introduction
+- `/info` - Detailed information about PremiumSoft.uz
+- `/help` - Available commands and help
 
-## Deployment Instructions
+## Bot Commands
 
-### 1. Prerequisites
+### /start
+Welcomes users and introduces the bot functionality.
 
-- A Telegram bot token (create one via [@BotFather](https://t.me/botfather))
-- A Vercel account
-- GitHub account
+### /info
+Provides comprehensive information about PremiumSoft.uz including:
+- Company overview
+- Services offered
+- Technologies used
+- Contact information
+- Why choose PremiumSoft.uz
 
-### 2. Deploy to Vercel
+### /help
+Shows available commands and basic usage instructions.
 
-1. Fork or clone this repository to your GitHub account
-2. Connect your GitHub repository to Vercel
-3. Configure the deployment:
-   - Set the Framework Preset to "Other"
-   - Add the environment variable `TELEGRAM_BOT_TOKEN` with your bot token
-4. Deploy the project
+## Deployment
 
-### 3. Set Up the Webhook
+1. Set up your Telegram bot token in Vercel environment variables
+2. Deploy to Vercel
+3. Set up the webhook using: `https://your-vercel-url.vercel.app/api/telegram/setup-webhook`
 
-After deployment, you need to set up the webhook to connect your Telegram bot to your Vercel deployment:
+## Environment Variables
 
-\`\`\`bash
-# Option 1: Visit the setup URL
-https://your-vercel-url.vercel.app/api/telegram/setup-webhook
+- `TELEGRAM_BOT_TOKEN` - Your Telegram bot token from BotFather
 
-# Option 2: Run the setup script
-python setup-webhook.py YOUR_BOT_TOKEN your-vercel-url.vercel.app
+## Testing
+
+- Visit `https://your-vercel-url.vercel.app/api/telegram/test-bot` to test bot connectivity
+- Send `/start` or `/info` to your bot on Telegram

@@ -2,174 +2,207 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 import requests
-import traceback
-import tempfile
-import numpy as np
-import cv2
-from io import BytesIO
+import logging
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Get environment variables
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-DEBUG_CHAT_ID = os.environ.get("DEBUG_CHAT_ID")
 
-def log_to_telegram(message):
-    if BOT_TOKEN and DEBUG_CHAT_ID:
-        try:
-            requests.post(
-                f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                json={"chat_id": DEBUG_CHAT_ID, "text": f"DEBUG: {message}"}
-            )
-        except Exception as e:
-            print(f"Error logging to Telegram: {str(e)}")
-
-def send_telegram_message(chat_id, text):
+def send_telegram_message(chat_id, text, parse_mode=None):
+    """Send a message to a Telegram chat."""
+    if not BOT_TOKEN:
+        logger.error("No bot token provided")
+        return False
+        
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": text
+    }
+    
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
+    
     try:
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        payload = {"chat_id": chat_id, "text": text}
-        response = requests.post(url, json=payload)
-        return response.json()
+        logger.info(f"Sending message to {chat_id}")
+        response = requests.post(url, json=payload, timeout=10)
+        response_json = response.json()
+        
+        if not response_json.get("ok"):
+            logger.error(f"Telegram API error: {response_json}")
+            return False
+            
+        return True
     except Exception as e:
-        log_to_telegram(f"Error sending message: {str(e)}")
-        return {"ok": False, "error": str(e)}
+        logger.error(f"Error sending message: {e}")
+        return False
 
-def get_file_from_telegram(file_id):
-    try:
-        # First, get the file path
-        file_path_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getFile?file_id={file_id}"
-        file_path_response = requests.get(file_path_url)
-        file_path_data = file_path_response.json()
+def get_premiumsoft_info():
+    """Get information about premiumsoft.uz"""
+    info_text = """
+🏢 *PremiumSoft.uz* - Premium Software Solutions
 
-        if not file_path_data.get("ok"):
-            return None
+🌟 *About Us*
+PremiumSoft.uz is a leading software development company in Uzbekistan, specializing in creating high-quality digital solutions for businesses of all sizes.
 
-        file_path = file_path_data["result"]["file_path"]
+💼 *Our Services*
+• Custom Software Development
+• Web Application Development
+• Mobile App Development (iOS & Android)
+• E-commerce Solutions
+• Database Design & Management
+• Cloud Solutions & Migration
+• IT Consulting & Support
+• UI/UX Design Services
 
-        # Then, download the file
-        file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
-        file_response = requests.get(file_url)
+🚀 *Technologies We Use*
+• Frontend: React, Vue.js, Angular, HTML5/CSS3
+• Backend: Node.js, Python, PHP, Java
+• Mobile: React Native, Flutter, Swift, Kotlin
+• Databases: PostgreSQL, MySQL, MongoDB
+• Cloud: AWS, Google Cloud, Azure
 
-        return file_response.content
-    except Exception as e:
-        log_to_telegram(f"Error getting file: {str(e)}")
-        return None
+🎯 *Why Choose Us*
+✅ Expert team of developers
+✅ Agile development methodology
+✅ 24/7 technical support
+✅ Competitive pricing
+✅ On-time project delivery
+✅ Post-launch maintenance
 
-def process_image_basic(image_data):
-    try:
-        # Convert image data to numpy array
-        nparr = np.frombuffer(image_data, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+📞 *Contact Information*
+🌐 Website: https://premiumsoft.uz
+📧 Email: info@premiumsoft.uz
+📱 Phone: +998 (XX) XXX-XX-XX
+📍 Location: Tashkent, Uzbekistan
 
-        # Load face cascade
-        face_cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        face_cascade = cv2.CascadeClassifier(face_cascade_path)
+💬 *Get Started*
+Ready to transform your business with premium software solutions? Contact us today for a free consultation!
 
-        # Convert to grayscale for face detection
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+#PremiumSoft #SoftwareDevelopment #Uzbekistan #TechSolutions
+    """
+    return info_text.strip()
 
-        # Detect faces
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-
-        if len(faces) == 0:
-            return {"error": "No face detected in the image"}
-
-        # Get info about the first face
-        x, y, w, h = faces[0]
-
-        # Calculate eye distance (simplified estimation)
-        eye_distance = w * 0.3
-
-        # For a real implementation, you would use a specialized model for these metrics
-        # These are placeholder/dummy values
-        return {
-            "faces_detected": len(faces),
-            "primary_face_width": int(w),
-            "primary_face_height": int(h),
-            "eye_distance": float(eye_distance),
-            # Dummy liveness data
-            "is_real": True,
-            "confidence": 0.85
-        }
-    except Exception as e:
-        return {"error": f"Error analyzing face: {str(e)}"}
-
-class handler(BaseHTTPRequestHandler):
+class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        """Handle GET requests - used for webhook setup and testing."""
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
-        self.wfile.write("Telegram face detection bot is live! Send a photo to analyze.".encode())
-        return
-
+        
+        response_text = 'PremiumSoft.uz Info Bot is active!\n'
+        
+        if BOT_TOKEN:
+            response_text += f"Bot token is configured\n"
+        else:
+            response_text += "WARNING: Bot token is not configured!\n"
+            
+        self.wfile.write(response_text.encode())
+        
+        # Set up webhook if requested
+        if self.path == '/setup-webhook' or self.path.startswith('/setup-webhook'):
+            try:
+                host = self.headers.get('Host')
+                
+                if '=' in self.path:
+                    custom_url = self.path.split('=')[1]
+                    webhook_url = custom_url
+                else:
+                    webhook_url = f"https://{host}/api/telegram"
+                
+                # Set the webhook
+                set_webhook_url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={webhook_url}&drop_pending_updates=true"
+                response = requests.get(set_webhook_url, timeout=10)
+                result = response.json()
+                
+                webhook_result = f"\nWebhook setup result: {json.dumps(result)}"
+                self.wfile.write(webhook_result.encode())
+                logger.info(f"Webhook setup to {webhook_url}: {result}")
+                
+            except Exception as e:
+                error_msg = f"\nError setting webhook: {str(e)}"
+                self.wfile.write(error_msg.encode())
+                logger.error(f"Error setting webhook: {e}")
+        
+        # Test endpoint
+        elif self.path == '/test-bot':
+            try:
+                get_me_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getMe"
+                response = requests.get(get_me_url, timeout=10)
+                result = response.json()
+                
+                test_result = f"\nBot test result: {json.dumps(result)}"
+                self.wfile.write(test_result.encode())
+                
+            except Exception as e:
+                error_msg = f"\nError testing bot: {str(e)}"
+                self.wfile.write(error_msg.encode())
+    
     def do_POST(self):
+        """Handle POST requests - process Telegram updates."""
         try:
-            # Get content length and read the request body
+            # Get the request body
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
+            update_json = post_data.decode()
+            
+            logger.info(f"Received update")
+            
+            # Parse the update
+            update = json.loads(update_json)
+            
+            # Process the update
+            if 'message' in update:
+                message = update['message']
+                chat_id = message.get('chat', {}).get('id')
+                text = message.get('text', '')
+                user_name = message.get('from', {}).get('first_name', 'User')
+                
+                logger.info(f"Received message from {chat_id}: {text}")
+                
+                # Handle /start command
+                if text == '/start':
+                    welcome_text = f"👋 Hello {user_name}!\n\nWelcome to PremiumSoft.uz Info Bot!\n\nUse /info to get detailed information about our company and services."
+                    send_telegram_message(chat_id, welcome_text)
+                
+                # Handle /info command
+                elif text == '/info':
+                    info_text = get_premiumsoft_info()
+                    send_telegram_message(chat_id, info_text, parse_mode="Markdown")
+                
+                # Handle /help command
+                elif text == '/help':
+                    help_text = """
+🤖 *PremiumSoft.uz Info Bot*
 
-            # Parse the JSON body
-            body = json.loads(post_data.decode('utf-8'))
+Available commands:
+/start - Start the bot
+/info - Get detailed information about PremiumSoft.uz
+/help - Show this help message
 
-            # Process the message
-            if "message" in body:
-                msg = body["message"]
-                chat_id = msg["chat"]["id"]
-
-                # Check if this message contains text
-                if "text" in msg:
-                    text = msg["text"]
-
-                    if text == "/start":
-                        send_telegram_message(chat_id, "Hi 👋! Send me a face photo and I'll analyze it.")
-                    else:
-                        send_telegram_message(chat_id, "Please send me a photo to analyze.")
-
-                # Check if this message contains a photo
-                elif "photo" in msg:
-                    # Telegram sends multiple photo sizes, get the largest one
-                    photo = msg["photo"][-1]  # Last one is the largest
-                    file_id = photo["file_id"]
-
-                    # Tell user we're processing
-                    send_telegram_message(chat_id, "Processing your photo... 🔍")
-
-                    # Get photo content
-                    photo_content = get_file_from_telegram(file_id)
-
-                    if photo_content:
-                        # Process image directly from memory
-                        result = process_image_basic(photo_content)
-
-                        # Format the response message
-                        if "error" in result:
-                            response_text = f"❌ {result['error']}"
-                        else:
-                            response_text = (
-                                f"✅ Analysis Results:\n\n"
-                                f"Faces detected: {result['faces_detected']}\n"
-                                f"Face dimensions: {result['primary_face_width']}x{result['primary_face_height']}px\n"
-                                f"Estimated eye distance: {result['eye_distance']:.2f}px\n"
-                                f"Confidence: {result['confidence']:.2f}\n"
-                                f"Real Face: {'Yes ✓' if result['is_real'] else 'No ✗'}"
-                            )
-
-                        # Send results
-                        send_telegram_message(chat_id, response_text)
-                    else:
-                        send_telegram_message(chat_id, "❌ Could not download the photo. Please try again.")
+For more information about our services, use the /info command.
+                    """
+                    send_telegram_message(chat_id, help_text.strip(), parse_mode="Markdown")
+                
+                # Handle other messages
                 else:
-                    send_telegram_message(chat_id, "Please send me a photo to analyze.")
-
-            # Send success response
+                    response_text = f"Hello {user_name}! 👋\n\nI'm the PremiumSoft.uz info bot. Use /info to learn about our company and services.\n\nAvailable commands:\n• /start - Start the bot\n• /info - Company information\n• /help - Help message"
+                    send_telegram_message(chat_id, response_text)
+            
+            # Send response to Telegram
             self.send_response(200)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
-            self.wfile.write("OK".encode())
-
+            self.wfile.write('OK'.encode())
+            
         except Exception as e:
-            error_msg = f"{str(e)}\n{traceback.format_exc()}"
-            log_to_telegram(f"Error: {error_msg}")
-
-            # Send error response
-            self.send_response(500)
+            logger.error(f"Error processing update: {e}")
+            
+            # Still return 200 to Telegram to prevent retries
+            self.send_response(200)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
-            self.wfile.write(f"Error: {error_msg}".encode())
+            self.wfile.write('OK'.encode())
