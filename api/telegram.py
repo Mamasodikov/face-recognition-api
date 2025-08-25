@@ -232,8 +232,8 @@ def format_lead_message(user_data, telegram_user):
 📱 *Telegram profil malumotlari / Telegram Profile:*
 • *Username:* @{username}
 • *User ID:* {user_id}
-• *First Name:* {first_name}
-• *Last Name:* {last_name}
+• *Ism / First Name:* {first_name}
+• *Familiya / Last Name:* {last_name}
 
 ⏰ *Vaqt / Timestamp:* {timestamp}
 🤖 *Manba / Source:* PremiumSoft Telegram Bot
