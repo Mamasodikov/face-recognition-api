@@ -156,19 +156,19 @@ def is_business_hours():
     utc_now = datetime.datetime.utcnow()
     uzbekistan_time = utc_now + datetime.timedelta(hours=5)
 
-    # Business hours: 9 AM to 6 PM, Monday to Friday
-    if uzbekistan_time.weekday() >= 5:  # Weekend
+    # Business hours: 9 AM to 5 PM, Monday to Saturday
+    if uzbekistan_time.weekday() >= 6:  # Sunday only
         return False
 
     hour = uzbekistan_time.hour
-    return 9 <= hour <= 18
+    return 9 <= hour <= 17
 
 def get_business_hours_message(user_language="uzbek"):
     """Get business hours message."""
     if user_language == "english":
-        return "\n\n🕒 *Business Hours:* Monday-Friday, 9:00-18:00 (Uzbekistan time)"
+        return "\n\n🕒 *Business Hours:* Monday-Saturday, 9:00-17:00 (Uzbekistan time)"
     else:
-        return "\n\n🕒 *Ish vaqti:* Dushanba-Juma, 9:00-18:00 (O'zbekiston vaqti)"
+        return "\n\n🕒 *Ish vaqti:* Dushanba-Shanba, 9:00-17:00 (O'zbekiston vaqti)"
 
 def send_to_group(message, topic_id=None):
     """Send message to the specified Telegram group."""
@@ -257,8 +257,46 @@ def is_bot_mentioned(text, bot_username="optimuspremiumbot"):
         return False
 
     text_lower = text.lower()
-    mentions = [f"@{bot_username.lower()}", "/start", "/help", "/info", "/ai"]
+    bot_username_lower = bot_username.lower()
+
+    # Check for direct mentions
+    mentions = [f"@{bot_username_lower}"]
+
+    # Check for commands (with or without bot username)
+    commands = ["/start", "/help", "/info", "/ai", "/order", "/hours", "/location"]
+    for command in commands:
+        mentions.extend([
+            command,
+            f"{command}@{bot_username_lower}"
+        ])
+
     return any(mention in text_lower for mention in mentions)
+
+def clean_command_text(text, bot_username="optimuspremiumbot"):
+    """Remove bot username from command text."""
+    if not text:
+        return text
+
+    # Remove @botusername from commands
+    bot_mention = f"@{bot_username.lower()}"
+    if bot_mention in text.lower():
+        # Find the position and remove it
+        text_lower = text.lower()
+        mention_pos = text_lower.find(bot_mention)
+        if mention_pos != -1:
+            text = text[:mention_pos] + text[mention_pos + len(bot_mention):]
+
+    return text.strip()
+
+def is_reply_to_bot(message):
+    """Check if the message is a reply to the bot."""
+    reply_to_message = message.get('reply_to_message')
+    if not reply_to_message:
+        return False
+
+    # Check if the replied message is from the bot
+    replied_from = reply_to_message.get('from', {})
+    return replied_from.get('is_bot', False) and replied_from.get('username', '').lower() == 'optimuspremiumbot'
 
 def detect_language(text):
     """Detect if the message is in Uzbek or English based on keywords and patterns."""
@@ -397,8 +435,9 @@ PremiumSoft - Farg'ona viloyati hokimligi qoshidagi Elektron hukumat rivojlantir
 📞 *Aloqa ma'lumotlari*
 🌐 Veb-sayt: https://premiumsoft.uz
 📧 Email: info@premiumsoft.uz
+📞 Telefon: +998 73 244 05 35
 📍 Manzil: Farg'ona viloyati, O'zbekiston
-🏢 Aniq manzil: Farg'ona sh., Mustaqillik ko'chasi, 19-uy
+🏢 Aniq manzil: Fargʻona, Ahmad Al-Fargʻoniy shoh koʻchasi, 53, 4-qavat
 🏛️ Vakolat: Farg'ona viloyati hokimligi
 
 💬 *Boshlash*
@@ -457,8 +496,9 @@ PremiumSoft is the official brand of the Center for Development of Electronic Go
 📞 *Contact Information*
 🌐 Website: https://premiumsoft.uz
 📧 Email: info@premiumsoft.uz
+📞 Phone: +998 73 244 05 35
 📍 Location: Fergana Region, Uzbekistan
-🏢 Address: Fergana city, Mustaqillik Street, 19
+🏢 Address: Fergana, Ahmad Al-Fergani Shah Street, 53, 4th floor
 🏛️ Authority: Fergana Regional Administration
 
 💬 *Get Started*
@@ -546,8 +586,11 @@ COMPANY VALUES & APPROACH:
 CONTACT INFORMATION:
 Website: https://premiumsoft.uz
 Email: info@premiumsoft.uz
+Phone: +998 73 244 05 35
+Address: Fergana, Ahmad Al-Fergani Shah Street, 53, 4th floor
 Location: Fergana Region, Uzbekistan
 Authority: Center for Development of Electronic Government, Fergana Regional Administration
+Business Hours: Monday-Saturday, 9:00-17:00 (Uzbekistan time)
 
 BUSINESS FOCUS:
 - E-government solutions and digital transformation
@@ -730,24 +773,30 @@ def handle_message(message):
         logger.error("Message missing chat_id")
         return
 
-    # Group behavior control - only respond when mentioned
-    if is_group_chat(chat_type) and not is_bot_mentioned(text):
-        logger.info(f"Ignoring group message without mention: {text}")
+    # Check if this is a reply to the bot
+    is_reply = is_reply_to_bot(message)
+
+    # Group behavior control - respond if mentioned, is a reply to bot, or in private chat
+    if is_group_chat(chat_type) and not is_bot_mentioned(text) and not is_reply:
+        logger.info(f"Ignoring group message without mention or reply: {text}")
         return
 
     logger.info(f"Received message from {chat_id}: {text}" + (f" in thread {message_thread_id}" if message_thread_id else ""))
 
+    # Clean command text (remove @botusername)
+    clean_text = clean_command_text(text)
+
     # Detect user's language
-    user_language = detect_language(text)
+    user_language = detect_language(clean_text)
     logger.info(f"Detected language: {user_language}")
 
     # Handle lead generation states
     if chat_id in user_states and user_states[chat_id]['state'] != UserState.NORMAL:
-        handle_lead_collection(chat_id, text, telegram_user, message_thread_id, user_language)
+        handle_lead_collection(chat_id, clean_text, telegram_user, message_thread_id, user_language)
         return
 
     # Handle /start command
-    if text == '/start':
+    if clean_text == '/start':
         if user_language == "english":
             ai_status = "🤖 AI Chat: ✅ Available" if groq_client else "🤖 AI Chat: ❌ Unavailable"
             welcome_text = f"""👋 Hello {user_name}!
@@ -793,7 +842,7 @@ Yoki quyidagi buyruqlardan foydalaning:
         send_telegram_message(chat_id, response_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
 
     # Handle /info command
-    elif text == '/info':
+    elif clean_text == '/info':
         if user_language == "english":
             info_text = get_premiumsoft_info_english()
         else:
@@ -802,7 +851,7 @@ Yoki quyidagi buyruqlardan foydalaning:
         send_telegram_message(chat_id, info_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
 
     # Handle /help command
-    elif text == '/help':
+    elif clean_text == '/help':
         if user_language == "english":
             ai_status = "✅ Available - Just ask me anything!" if groq_client else "❌ Currently unavailable"
             help_text = f"""
@@ -867,11 +916,11 @@ PremiumSoft.uz haqida biror savol yozing va men AI yordamida javob beraman!
         send_telegram_message(chat_id, help_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
 
     # Handle /order command
-    elif text == '/order' or 'buyurtma' in text.lower() or 'order' in text.lower():
+    elif clean_text == '/order' or 'buyurtma' in clean_text.lower() or 'order' in clean_text.lower():
         start_lead_collection(chat_id, message_thread_id, user_language)
 
     # Handle /hours command
-    elif text == '/hours' or text == '/vaqt':
+    elif clean_text == '/hours' or clean_text == '/vaqt':
         business_hours_msg = get_business_hours_message(user_language)
 
         if is_business_hours():
@@ -889,29 +938,31 @@ PremiumSoft.uz haqida biror savol yozing va men AI yordamida javob beraman!
         send_telegram_message(chat_id, hours_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
 
     # Handle /location command
-    elif text == '/location' or text == '/manzil':
+    elif clean_text == '/location' or clean_text == '/manzil':
         send_telegram_location(chat_id, 40.3834, 71.7841, message_thread_id)
 
         if user_language == "english":
             location_text = """📍 *PremiumSoft.uz Location*
 
-🏢 Address: Fergana city, Mustaqillik Street, 19
+🏢 Address: Fergana, Ahmad Al-Fergani Shah Street, 53, 4th floor
+📞 Phone: +998 73 244 05 35
 🏛️ Authority: Fergana Regional Administration
-📞 Contact: info@premiumsoft.uz
+📧 Email: info@premiumsoft.uz
 🌐 Website: https://premiumsoft.uz"""
         else:
             location_text = """📍 *PremiumSoft.uz Manzili*
 
-🏢 Manzil: Farg'ona sh., Mustaqillik ko'chasi, 19-uy
+🏢 Manzil: Fargʻona, Ahmad Al-Fargʻoniy shoh koʻchasi, 53, 4-qavat
+📞 Telefon: +998 73 244 05 35
 🏛️ Vakolat: Farg'ona viloyati hokimligi
-📞 Aloqa: info@premiumsoft.uz
+📧 Email: info@premiumsoft.uz
 🌐 Veb-sayt: https://premiumsoft.uz"""
 
         location_with_cta = add_cta_to_message(location_text)
         send_telegram_message(chat_id, location_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
 
     # Handle /ai command
-    elif text == '/ai':
+    elif clean_text == '/ai':
         if user_language == "english":
             if groq_client:
                 ai_text = """🤖 *AI Chat Status: ✅ ACTIVE*
@@ -988,24 +1039,26 @@ Bot asosiy ma'lumotlar uchun ishlashda davom etadi!"""
     else:
         # Check for location requests
         location_keywords = ['location', 'manzil', 'address', 'joylashuv', 'where', 'qayerda', 'qayer']
-        if any(keyword in text.lower() for keyword in location_keywords):
-            # Send PremiumSoft location (Fergana coordinates)
-            # Fergana city coordinates: 40.3834, 71.7841
-            send_telegram_location(chat_id, 40.3834, 71.7841, message_thread_id)
+        if any(keyword in clean_text.lower() for keyword in location_keywords):
+            # Send PremiumSoft location (Ahmad Al-Fergani coordinates)
+            # Ahmad Al-Fergani Street, Fergana coordinates: 40.391014, 71.773127
+            send_telegram_location(chat_id, 40.391014, 71.773127, message_thread_id)
 
             if user_language == "english":
                 location_text = """📍 *PremiumSoft.uz Location*
 
-🏢 Address: Fergana city, Mustaqillik Street, 19
+🏢 Address: Fergana, Ahmad Al-Fergani Shah Street, 53, 4th floor
+📞 Phone: +998 73 244 05 35
 🏛️ Authority: Fergana Regional Administration
-📞 Contact: info@premiumsoft.uz
+📧 Email: info@premiumsoft.uz
 🌐 Website: https://premiumsoft.uz"""
             else:
                 location_text = """📍 *PremiumSoft.uz Manzili*
 
-🏢 Manzil: Farg'ona sh., Mustaqillik ko'chasi, 19-uy
+🏢 Manzil: Fargʻona, Ahmad Al-Fargʻoniy shoh koʻchasi, 53, 4-qavat
+📞 Telefon: +998 73 244 05 35
 🏛️ Vakolat: Farg'ona viloyati hokimligi
-📞 Aloqa: info@premiumsoft.uz
+📧 Email: info@premiumsoft.uz
 🌐 Veb-sayt: https://premiumsoft.uz"""
 
             location_with_cta = add_cta_to_message(location_text)
@@ -1014,7 +1067,7 @@ Bot asosiy ma'lumotlar uchun ishlashda davom etadi!"""
 
         # Check for greeting messages
         greeting_keywords = ['salom', 'hello', 'hi', 'assalomu alaykum', 'good morning', 'good day', 'xayrli']
-        if any(keyword in text.lower() for keyword in greeting_keywords):
+        if any(keyword in clean_text.lower() for keyword in greeting_keywords):
             if user_language == "english":
                 greeting_response = f"Hello {user_name}! 👋 Welcome to PremiumSoft.uz! How can I help you today?"
             else:
@@ -1026,7 +1079,7 @@ Bot asosiy ma'lumotlar uchun ishlashda davom etadi!"""
 
         # Check for thanks messages
         thanks_keywords = ['rahmat', 'thank', 'thanks', 'tashakkur', 'grateful']
-        if any(keyword in text.lower() for keyword in thanks_keywords):
+        if any(keyword in clean_text.lower() for keyword in thanks_keywords):
             if user_language == "english":
                 thanks_response = f"You're welcome, {user_name}! 😊 Is there anything else I can help you with?"
             else:
@@ -1037,11 +1090,11 @@ Bot asosiy ma'lumotlar uchun ishlashda davom etadi!"""
             return
 
         # Check if it's a command we don't recognize
-        if text.startswith('/'):
+        if clean_text.startswith('/'):
             if user_language == "english":
-                response_text = f"❓ Unknown command: {text}\n\nUse /help to see available commands or just ask me anything about PremiumSoft.uz!"
+                response_text = f"❓ Unknown command: {clean_text}\n\nUse /help to see available commands or just ask me anything about PremiumSoft.uz!"
             else:
-                response_text = f"❓ Noma'lum buyruq: {text}\n\nMavjud buyruqlarni ko'rish uchun /help dan foydalaning yoki PremiumSoft.uz haqida biror narsa so'rang!"
+                response_text = f"❓ Noma'lum buyruq: {clean_text}\n\nMavjud buyruqlarni ko'rish uchun /help dan foydalaning yoki PremiumSoft.uz haqida biror narsa so'rang!"
             response_with_cta = add_cta_to_message(response_text)
             send_telegram_message(chat_id, response_with_cta, message_thread_id=message_thread_id)
         else:
@@ -1053,12 +1106,12 @@ Bot asosiy ma'lumotlar uchun ishlashda davom etadi!"""
                 'price', 'narx', 'cost', 'qancha', 'how much', 'budget'
             ]
 
-            if any(keyword in text.lower() for keyword in service_keywords):
+            if any(keyword in clean_text.lower() for keyword in service_keywords):
                 # Show typing indicator
                 send_typing_action(chat_id, message_thread_id)
 
                 # Trigger lead collection for service inquiries
-                ai_response = get_ai_response(text, user_name, user_language)
+                ai_response = get_ai_response(clean_text, user_name, user_language)
                 ai_with_cta = add_cta_to_message(ai_response)
 
                 # Add business hours info if outside business hours
@@ -1076,8 +1129,8 @@ Bot asosiy ma'lumotlar uchun ishlashda davom etadi!"""
                 send_typing_action(chat_id, message_thread_id)
 
                 # Use AI to respond to the message
-                logger.info(f"Processing AI request from {user_name}: {text}")
-                ai_response = get_ai_response(text, user_name, user_language)
+                logger.info(f"Processing AI request from {user_name}: {clean_text}")
+                ai_response = get_ai_response(clean_text, user_name, user_language)
                 ai_with_cta = add_cta_to_message(ai_response)
 
                 # Track user stats
