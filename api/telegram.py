@@ -81,6 +81,95 @@ def send_telegram_message(chat_id, text, parse_mode=None, message_thread_id=None
         logger.error(f"Unexpected error sending message: {e}")
         return False
 
+def send_telegram_location(chat_id, latitude, longitude, message_thread_id=None):
+    """Send a location to a Telegram chat."""
+    if not BOT_TOKEN:
+        logger.error("No bot token provided")
+        return False
+
+    if not chat_id:
+        logger.error("No chat_id provided")
+        return False
+
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendLocation"
+    payload = {
+        "chat_id": chat_id,
+        "latitude": latitude,
+        "longitude": longitude
+    }
+
+    if message_thread_id:
+        payload["message_thread_id"] = message_thread_id
+
+    try:
+        logger.info(f"Sending location to chat {chat_id}")
+        response = requests.post(url, json=payload, timeout=10)
+        response_json = response.json()
+
+        if not response_json.get("ok"):
+            error_code = response_json.get("error_code", "unknown")
+            error_desc = response_json.get("description", "unknown error")
+            logger.error(f"Telegram API error {error_code}: {error_desc}")
+            return False
+
+        return True
+    except Exception as e:
+        logger.error(f"Error sending location: {e}")
+        return False
+
+def send_typing_action(chat_id, message_thread_id=None):
+    """Send typing action to show bot is processing."""
+    if not BOT_TOKEN or not chat_id:
+        return False
+
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendChatAction"
+    payload = {
+        "chat_id": chat_id,
+        "action": "typing"
+    }
+
+    if message_thread_id:
+        payload["message_thread_id"] = message_thread_id
+
+    try:
+        requests.post(url, json=payload, timeout=5)
+        return True
+    except:
+        return False
+
+def get_user_stats(chat_id):
+    """Get user interaction statistics."""
+    if chat_id not in user_states:
+        user_states[chat_id] = {'state': UserState.NORMAL, 'message_count': 0, 'last_interaction': None}
+
+    import datetime
+    user_states[chat_id]['message_count'] = user_states[chat_id].get('message_count', 0) + 1
+    user_states[chat_id]['last_interaction'] = datetime.datetime.now()
+
+    return user_states[chat_id]
+
+def is_business_hours():
+    """Check if it's business hours in Uzbekistan (UTC+5)."""
+    import datetime
+
+    # Get current time in Uzbekistan (UTC+5)
+    utc_now = datetime.datetime.utcnow()
+    uzbekistan_time = utc_now + datetime.timedelta(hours=5)
+
+    # Business hours: 9 AM to 6 PM, Monday to Friday
+    if uzbekistan_time.weekday() >= 5:  # Weekend
+        return False
+
+    hour = uzbekistan_time.hour
+    return 9 <= hour <= 18
+
+def get_business_hours_message(user_language="uzbek"):
+    """Get business hours message."""
+    if user_language == "english":
+        return "\n\n🕒 *Business Hours:* Monday-Friday, 9:00-18:00 (Uzbekistan time)"
+    else:
+        return "\n\n🕒 *Ish vaqti:* Dushanba-Juma, 9:00-18:00 (O'zbekiston vaqti)"
+
 def send_to_group(message, topic_id=None):
     """Send message to the specified Telegram group."""
     if not BOT_TOKEN or not TELEGRAM_CHAT_ID:
@@ -118,11 +207,11 @@ def format_lead_message(user_data, telegram_user):
 
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Handle None values for username and last_name
-    username = telegram_user.get('username', 'Yoq / None')
-    user_id = telegram_user.get('id', 'Nomalum / Unknown')
-    first_name = telegram_user.get('first_name', 'Belgilanmagan / Not specified')
-    last_name = telegram_user.get('last_name', 'Yoq / None')
+    # Handle None values - don't translate usernames and technical fields
+    username = telegram_user.get('username', 'None')
+    user_id = telegram_user.get('id', 'Unknown')
+    first_name = telegram_user.get('first_name', 'Not specified')
+    last_name = telegram_user.get('last_name', 'None')
 
     project = user_data.get('project', 'Belgilanmagan / Not specified')
     name = user_data.get('name', 'Belgilanmagan / Not specified')
@@ -143,8 +232,8 @@ def format_lead_message(user_data, telegram_user):
 📱 *Telegram profil malumotlari / Telegram Profile:*
 • *Username:* @{username}
 • *User ID:* {user_id}
-• *Ism / First Name:* {first_name}
-• *Familiya / Last Name:* {last_name}
+• *First Name:* {first_name}
+• *Last Name:* {last_name}
 
 ⏰ *Vaqt / Timestamp:* {timestamp}
 🤖 *Manba / Source:* PremiumSoft Telegram Bot
@@ -180,21 +269,69 @@ def detect_language(text):
 
     # Uzbek indicators
     uzbek_keywords = [
-        # Common Uzbek words
-        'salom', 'rahmat', 'iltimos', 'kerak', 'nima', 'qanday', 'qachon', 'qayerda',
-        'loyiha', 'xizmat', 'dastur', 'sayt', 'mobil', 'ishlab', 'chiqish', 'yordam',
-        'kompaniya', 'jamoa', 'texnologiya', 'rivojlantirish', 'yaratish', 'qilish',
-        'bo\'lsangiz', 'muhtoj', 'bering', 'gapirib', 'haqida', 'uchun', 'bilan',
-        # Uzbek-specific characters and patterns
-        'o\'', 'g\'', 'sh', 'ch', 'ng'
+    # --- Salomlashish va xayrlashish ---
+    'salom', 'assalomu alaykum', 'alaykum assalom', 'xayr', 'xayrli tong',
+    'xayrli kun', 'xayrli kech', 'omad', 'tabriklayman', 'marhamat',
+
+    # --- Odob va minnatdorchilik ---
+    'rahmat', 'katta rahmat', 'iltimos', 'iltimos qilaman', 'uzr', 'kechirasiz',
+    'afsus', 'rozi', 'marhamat', 'qabul qildim', 'tasdiq',
+
+    # --- Savollar uchun so'zlar ---
+    'nima', 'qanday', 'qachon', 'qayerda', 'qayerdan', 'kim', 'nega', 'qancha',
+    'qaysi', 'qanaqa', 'qanaqasiga', 'nimaga', 'qayerlik', 'qaysi biri',
+
+    # --- Loyiha va xizmatlar ---
+    'loyiha', 'xizmat', 'dastur', 'sayt', 'vebsayt', 'mobil', 'ilova',
+    'ishlab chiqish', 'dasturlash', 'yordam', 'kompaniya', 'firma', 'jamoa',
+    'zakaz', 'buyurtma', 'texnologiya', 'rivojlantirish', 'yaratish',
+    'qilish', 'tuzish', 'platforma', 'raqamlashtirish', 'startap', 'hamkorlik',
+    'maqsad', 'natija', 'funksiya', 'imkoniyat', 'integratsiya', 'backend',
+    'frontend', 'server', 'ma’lumotlar bazasi',
+
+    # --- Moliyaviy va ish jarayoni ---
+    'narx', 'tekinga', 'shartnoma', 'hisob', 'pul', 'to\'lov', 'muddat',
+    'byudjet', 'arzon', 'qimmat', 'daromad', 'foyda', 'investitsiya',
+
+    # --- Foydalanuvchi uchun so'zlar ---
+    'foydalanuvchi', 'mijoz', 'aloqa', 'savol', 'javob', 'fikr', 'taklif',
+    'so\'rov', 'shikoyat', 'profil', 'akkaunt', 'ro\'yxat', 'kirish', 'chiqish',
+
+    # --- Uzbek tiliga xos belgilar ---
+    'o\'', 'g\'', 'sh', 'ch', 'ng', 'ʼ', '‘', '’', 'yo\'q', 'ha'
     ]
 
     # English indicators
     english_keywords = [
-        'hello', 'thanks', 'thank', 'please', 'need', 'what', 'how', 'when', 'where',
-        'project', 'service', 'app', 'website', 'mobile', 'development', 'help',
-        'company', 'team', 'technology', 'create', 'make', 'can', 'you', 'your',
-        'about', 'tell', 'me', 'with', 'for', 'and', 'the', 'is', 'are', 'very', 'much'
+    # --- Greetings & Polite words ---
+    'hello', 'hi', 'hey', 'good morning', 'good evening', 'good night',
+    'bye', 'goodbye', 'thanks', 'thank', 'thank you', 'please', 'welcome',
+
+    # --- Common requests & needs ---
+    'need', 'want', 'require', 'looking for', 'searching', 'help', 'support',
+    'assist', 'guide', 'show', 'tell', 'explain', 'about',
+
+    # --- Question words ---
+    'what', 'how', 'when', 'where', 'who', 'why', 'which', 'whose',
+
+    # --- Project / Business related ---
+    'project', 'service', 'solution', 'product', 'platform', 'system',
+    'app', 'application', 'website', 'web', 'portal', 'software', 'mobile',
+    'development', 'design', 'build', 'create', 'make', 'deploy', 'launch',
+    'technology', 'digital', 'automation', 'integration', 'startup', 'business',
+
+    # --- Company / Team ---
+    'company', 'team', 'group', 'agency', 'enterprise', 'organization',
+    'partner', 'collaboration', 'client', 'customer', 'user', 'profile',
+
+    # --- Finance & Contract ---
+    'price', 'cost', 'budget', 'payment', 'invoice', 'deal', 'contract',
+    'profit', 'income', 'revenue', 'investment', 'free', 'cheap', 'expensive',
+
+    # --- General small words ---
+    'can', 'could', 'will', 'would', 'shall', 'should',
+    'you', 'your', 'me', 'my', 'i', 'we', 'our', 'they', 'their',
+    'with', 'for', 'and', 'the', 'is', 'are', 'was', 'were', 'very', 'much'
     ]
 
     uzbek_score = sum(1 for word in uzbek_keywords if word in text_lower)
@@ -246,16 +383,15 @@ PremiumSoft - Farg'ona viloyati hokimligi qoshidagi Elektron hukumat rivojlantir
 
 👥 *Rahbariyat jamoasi*
 • Sirojiddin Maxmudov - Jamoa rahbari
-• Muxtorov Abdullajon - Loyiha menejeri
 • Solijon Abdurakhmonov - Birinchi o'rinbosar
+• Muxtorov Abdullajon - Loyiha menejeri
 • Feruza Tolipova - Bosh hisobchi
-• Bakhrom Jalilov - RTM direktori
 
 🧠 *Texnik mutaxassislar*
 • Mikhail Domozhirov - Full-stack dasturchi
-• Otabek Ahmadjonov - Backend jamoa rahbari
-• Zokirjon Kholikov - Frontend jamoa rahbari
-• Muhammadaziz Mamasodikov - Mobil jamoa rahbari
+• Otabek Ahmadjonov - Backend jamoa timlidi
+• Zokirjon Kholikov - Frontend jamoa timlidi
+• Muhammadaziz Mamasodikov - Mobil jamoa timlidi
 • Inomjon Abduvahobov - UX/UI dizayner
 
 📞 *Aloqa ma'lumotlari*
@@ -307,10 +443,9 @@ PremiumSoft is the official brand of the Center for Development of Electronic Go
 
 👥 *Leadership Team*
 • Sirojiddin Maxmudov - Team Leader
-• Muxtorov Abdullajon - Project Manager
 • Solijon Abdurakhmonov - First Deputy
+• Muxtorov Abdullajon - Project Manager
 • Feruza Tolipova - Chief Accountant
-• Bakhrom Jalilov - Director of RTM
 
 🧠 *Technical Experts*
 • Mikhail Domozhirov - Full-stack Developer
@@ -482,32 +617,54 @@ def handle_lead_collection(chat_id, text, telegram_user, message_thread_id=None,
     """Handle lead generation conversation flow."""
     user_data = user_states[chat_id]
 
+    # Check for stop commands
+    stop_keywords = ['stop', 'bekor', 'bekor qilish', 'cancel', 'quit', 'exit', 'chiqish', 'toxta', 'toxtash']
+    if any(keyword in text.lower() for keyword in stop_keywords):
+        # Reset user state
+        user_states[chat_id] = {'state': UserState.NORMAL}
+
+        if user_language == "english":
+            response = """❌ Order process cancelled.
+
+You can start again anytime by sending /order command.
+
+🤝 If you need our services, feel free to contact us!"""
+        else:
+            response = """❌ Buyurtma jarayoni bekor qilindi.
+
+Istalgan vaqtda /order buyrug'i orqali qaytadan boshlashingiz mumkin.
+
+🤝 Agar bizning xizmatlarimizga muhtoj bo'lsangiz, biz bilan bog'lanishdan tortinmang!"""
+
+        send_telegram_message(chat_id, response, message_thread_id=message_thread_id)
+        return
+
     if user_data['state'] == UserState.COLLECTING_PROJECT:
         user_data['project'] = text
         user_data['state'] = UserState.COLLECTING_NAME
         if user_language == "english":
-            response = "Thank you! Now please write your name:"
+            response = "Thank you! Now please write your name:\n\n💡 *Tip: You can type 'stop' anytime to cancel*"
         else:
-            response = "Rahmat! Endi ismingizni yozing:"
-        send_telegram_message(chat_id, response, message_thread_id=message_thread_id)
+            response = "Rahmat! Endi ismingizni yozing:\n\n💡 *Maslahat: Bekor qilish uchun 'stop' yozing*"
+        send_telegram_message(chat_id, response, parse_mode="Markdown", message_thread_id=message_thread_id)
 
     elif user_data['state'] == UserState.COLLECTING_NAME:
         user_data['name'] = text
         user_data['state'] = UserState.COLLECTING_PHONE
         if user_language == "english":
-            response = "Great! Now please write your phone number:"
+            response = "Great! Now please write your phone number:\n\n💡 *Tip: You can type 'stop' anytime to cancel*"
         else:
-            response = "Yaxshi! Endi telefon raqamingizni yozing:"
-        send_telegram_message(chat_id, response, message_thread_id=message_thread_id)
+            response = "Yaxshi! Endi telefon raqamingizni yozing:\n\n💡 *Maslahat: Bekor qilish uchun 'stop' yozing*"
+        send_telegram_message(chat_id, response, parse_mode="Markdown", message_thread_id=message_thread_id)
 
     elif user_data['state'] == UserState.COLLECTING_PHONE:
         user_data['phone'] = text
         user_data['state'] = UserState.COLLECTING_EMAIL
         if user_language == "english":
-            response = "Excellent! Finally, please write your email address:"
+            response = "Excellent! Finally, please write your email address:\n\n💡 *Tip: You can type 'stop' anytime to cancel*"
         else:
-            response = "Ajoyib! Oxirida email manzilingizni yozing:"
-        send_telegram_message(chat_id, response, message_thread_id=message_thread_id)
+            response = "Ajoyib! Oxirida email manzilingizni yozing:\n\n💡 *Maslahat: Bekor qilish uchun 'stop' yozing*"
+        send_telegram_message(chat_id, response, parse_mode="Markdown", message_thread_id=message_thread_id)
 
     elif user_data['state'] == UserState.COLLECTING_EMAIL:
         user_data['email'] = text
@@ -521,11 +678,15 @@ def handle_lead_collection(chat_id, text, telegram_user, message_thread_id=None,
 
         # Confirm to user in their language
         if user_language == "english":
-            response = """Thank you! Your information has been successfully sent. We will contact you soon!
+            response = """✅ Thank you! Your information has been successfully sent. We will contact you soon!
+
+📞 Our team will reach out within 24 hours to discuss your project.
 
 🤝 If you need our services, feel free to contact us!"""
         else:
-            response = """Rahmat! Ma'lumotlaringiz muvaffaqiyatli yuborildi. Tez orada siz bilan bog'lanamiz!
+            response = """✅ Rahmat! Ma'lumotlaringiz muvaffaqiyatli yuborildi. Tez orada siz bilan bog'lanamiz!
+
+📞 Bizning jamoa 24 soat ichida loyihangizni muhokama qilish uchun siz bilan bog'lanadi.
 
 🤝 Agar bizning xizmatlarimizga muhtoj bo'lsangiz, biz bilan bog'lanishdan tortinmang!"""
 
@@ -653,11 +814,18 @@ Yoki quyidagi buyruqlardan foydalaning:
 /help - Show this help message
 /ai - Check AI chat status
 /order - Start order process
+/hours - Check business hours
+/location - Get our location
 
 *AI Chat:* {ai_status}
 
 💬 *How to use:*
 Just type any question about PremiumSoft.uz and I'll answer using AI!
+
+*Quick actions:*
+• Type "location" to get our address
+• Type "hello" for a greeting
+• Type "thanks" to express gratitude
 
 *Examples:*
 • "Tell me about your mobile development services"
@@ -676,11 +844,18 @@ Just type any question about PremiumSoft.uz and I'll answer using AI!
 /help - Ushbu yordam xabarini ko'rsatish
 /ai - AI suhbat holatini tekshirish
 /order - Buyurtma berish jarayonini boshlash
+/hours - Ish vaqtini tekshirish
+/location - Bizning manzilimizni olish
 
 *AI Suhbat:* {ai_status}
 
 💬 *Qanday foydalanish:*
 PremiumSoft.uz haqida biror savol yozing va men AI yordamida javob beraman!
+
+*Tezkor harakatlar:*
+• "manzil" yozing - bizning manzilimizni olish uchun
+• "salom" yozing - salomlashish uchun
+• "rahmat" yozing - minnatdorchilik bildirish uchun
 
 *Misollar:*
 • "Mobil dasturlash xizmatlaringiz haqida gapirib bering"
@@ -694,6 +869,46 @@ PremiumSoft.uz haqida biror savol yozing va men AI yordamida javob beraman!
     # Handle /order command
     elif text == '/order' or 'buyurtma' in text.lower() or 'order' in text.lower():
         start_lead_collection(chat_id, message_thread_id, user_language)
+
+    # Handle /hours command
+    elif text == '/hours' or text == '/vaqt':
+        business_hours_msg = get_business_hours_message(user_language)
+
+        if is_business_hours():
+            if user_language == "english":
+                hours_text = f"🟢 *We're currently ONLINE!*{business_hours_msg}\n\n📞 Contact us now for immediate assistance!"
+            else:
+                hours_text = f"🟢 *Hozir ONLAYNMIZ!*{business_hours_msg}\n\n📞 Darhol yordam olish uchun biz bilan bog'laning!"
+        else:
+            if user_language == "english":
+                hours_text = f"🔴 *We're currently OFFLINE*{business_hours_msg}\n\n📧 Send us a message and we'll respond during business hours!"
+            else:
+                hours_text = f"🔴 *Hozir OFFLAYNMIZ*{business_hours_msg}\n\n📧 Xabar yuboring, ish vaqtida javob beramiz!"
+
+        hours_with_cta = add_cta_to_message(hours_text)
+        send_telegram_message(chat_id, hours_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
+
+    # Handle /location command
+    elif text == '/location' or text == '/manzil':
+        send_telegram_location(chat_id, 40.3834, 71.7841, message_thread_id)
+
+        if user_language == "english":
+            location_text = """📍 *PremiumSoft.uz Location*
+
+🏢 Address: Fergana city, Mustaqillik Street, 19
+🏛️ Authority: Fergana Regional Administration
+📞 Contact: info@premiumsoft.uz
+🌐 Website: https://premiumsoft.uz"""
+        else:
+            location_text = """📍 *PremiumSoft.uz Manzili*
+
+🏢 Manzil: Farg'ona sh., Mustaqillik ko'chasi, 19-uy
+🏛️ Vakolat: Farg'ona viloyati hokimligi
+📞 Aloqa: info@premiumsoft.uz
+🌐 Veb-sayt: https://premiumsoft.uz"""
+
+        location_with_cta = add_cta_to_message(location_text)
+        send_telegram_message(chat_id, location_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
 
     # Handle /ai command
     elif text == '/ai':
@@ -771,6 +986,56 @@ Bot asosiy ma'lumotlar uchun ishlashda davom etadi!"""
 
     # Handle all other messages with AI
     else:
+        # Check for location requests
+        location_keywords = ['location', 'manzil', 'address', 'joylashuv', 'where', 'qayerda', 'qayer']
+        if any(keyword in text.lower() for keyword in location_keywords):
+            # Send PremiumSoft location (Fergana coordinates)
+            # Fergana city coordinates: 40.3834, 71.7841
+            send_telegram_location(chat_id, 40.3834, 71.7841, message_thread_id)
+
+            if user_language == "english":
+                location_text = """📍 *PremiumSoft.uz Location*
+
+🏢 Address: Fergana city, Mustaqillik Street, 19
+🏛️ Authority: Fergana Regional Administration
+📞 Contact: info@premiumsoft.uz
+🌐 Website: https://premiumsoft.uz"""
+            else:
+                location_text = """📍 *PremiumSoft.uz Manzili*
+
+🏢 Manzil: Farg'ona sh., Mustaqillik ko'chasi, 19-uy
+🏛️ Vakolat: Farg'ona viloyati hokimligi
+📞 Aloqa: info@premiumsoft.uz
+🌐 Veb-sayt: https://premiumsoft.uz"""
+
+            location_with_cta = add_cta_to_message(location_text)
+            send_telegram_message(chat_id, location_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
+            return
+
+        # Check for greeting messages
+        greeting_keywords = ['salom', 'hello', 'hi', 'assalomu alaykum', 'good morning', 'good day', 'xayrli']
+        if any(keyword in text.lower() for keyword in greeting_keywords):
+            if user_language == "english":
+                greeting_response = f"Hello {user_name}! 👋 Welcome to PremiumSoft.uz! How can I help you today?"
+            else:
+                greeting_response = f"Salom {user_name}! 👋 PremiumSoft.uz ga xush kelibsiz! Bugun sizga qanday yordam bera olaman?"
+
+            greeting_with_cta = add_cta_to_message(greeting_response)
+            send_telegram_message(chat_id, greeting_with_cta, message_thread_id=message_thread_id)
+            return
+
+        # Check for thanks messages
+        thanks_keywords = ['rahmat', 'thank', 'thanks', 'tashakkur', 'grateful']
+        if any(keyword in text.lower() for keyword in thanks_keywords):
+            if user_language == "english":
+                thanks_response = f"You're welcome, {user_name}! 😊 Is there anything else I can help you with?"
+            else:
+                thanks_response = f"Arzimaydi, {user_name}! 😊 Yana biror narsada yordam bera olamanmi?"
+
+            thanks_with_cta = add_cta_to_message(thanks_response)
+            send_telegram_message(chat_id, thanks_with_cta, message_thread_id=message_thread_id)
+            return
+
         # Check if it's a command we don't recognize
         if text.startswith('/'):
             if user_language == "english":
@@ -784,13 +1049,22 @@ Bot asosiy ma'lumotlar uchun ishlashda davom etadi!"""
             service_keywords = [
                 'xizmat', 'service', 'loyiha', 'project', 'dastur', 'app', 'sayt', 'website',
                 'mobil', 'mobile', 'bot', 'dizayn', 'design', 'ishlab chiqish', 'development',
-                'kerak', 'need', 'qilish', 'make', 'yaratish', 'create', 'buyurtma', 'order'
+                'kerak', 'need', 'qilish', 'make', 'yaratish', 'create', 'buyurtma', 'order',
+                'price', 'narx', 'cost', 'qancha', 'how much', 'budget'
             ]
 
             if any(keyword in text.lower() for keyword in service_keywords):
+                # Show typing indicator
+                send_typing_action(chat_id, message_thread_id)
+
                 # Trigger lead collection for service inquiries
                 ai_response = get_ai_response(text, user_name, user_language)
                 ai_with_cta = add_cta_to_message(ai_response)
+
+                # Add business hours info if outside business hours
+                if not is_business_hours():
+                    business_hours_msg = get_business_hours_message(user_language)
+                    ai_with_cta += business_hours_msg
 
                 # Consolidate order prompt into the main response
                 order_prompt = get_order_prompt(user_language)
@@ -798,10 +1072,24 @@ Bot asosiy ma'lumotlar uchun ishlashda davom etadi!"""
 
                 send_telegram_message(chat_id, consolidated_response, message_thread_id=message_thread_id)
             else:
+                # Show typing indicator for AI processing
+                send_typing_action(chat_id, message_thread_id)
+
                 # Use AI to respond to the message
                 logger.info(f"Processing AI request from {user_name}: {text}")
                 ai_response = get_ai_response(text, user_name, user_language)
                 ai_with_cta = add_cta_to_message(ai_response)
+
+                # Track user stats
+                user_stats = get_user_stats(chat_id)
+
+                # Add personalized touch for frequent users
+                if user_stats.get('message_count', 0) > 5:
+                    if user_language == "english":
+                        ai_with_cta += f"\n\n💫 *Thanks for being an active user, {user_name}!*"
+                    else:
+                        ai_with_cta += f"\n\n💫 *Faol foydalanuvchi bo'lganingiz uchun rahmat, {user_name}!*"
+
                 send_telegram_message(chat_id, ai_with_cta, message_thread_id=message_thread_id)
 
 def setup_webhook(host, custom_url=None):
