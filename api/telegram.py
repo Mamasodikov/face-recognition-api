@@ -39,8 +39,8 @@ class UserState:
     COLLECTING_PHONE = "collecting_phone"
     COLLECTING_EMAIL = "collecting_email"
 
-def send_telegram_message(chat_id, text, parse_mode=None):
-    """Send a message to a Telegram chat."""
+def send_telegram_message(chat_id, text, parse_mode=None, message_thread_id=None):
+    """Send a message to a Telegram chat, optionally to a specific topic/thread."""
     if not BOT_TOKEN:
         logger.error("No bot token provided")
         return False
@@ -58,8 +58,12 @@ def send_telegram_message(chat_id, text, parse_mode=None):
     if parse_mode:
         payload["parse_mode"] = parse_mode
 
+    # Add topic/thread support
+    if message_thread_id:
+        payload["message_thread_id"] = message_thread_id
+
     try:
-        logger.info(f"Sending message to chat {chat_id}")
+        logger.info(f"Sending message to chat {chat_id}" + (f" in thread {message_thread_id}" if message_thread_id else ""))
         response = requests.post(url, json=payload, timeout=10)
         response_json = response.json()
 
@@ -167,6 +171,48 @@ def is_bot_mentioned(text, bot_username="optimuspremiumbot"):
     mentions = [f"@{bot_username.lower()}", "/start", "/help", "/info", "/ai"]
     return any(mention in text_lower for mention in mentions)
 
+def detect_language(text):
+    """Detect if the message is in Uzbek or English based on keywords and patterns."""
+    if not text:
+        return "uzbek"  # Default to Uzbek
+
+    text_lower = text.lower()
+
+    # Uzbek indicators
+    uzbek_keywords = [
+        # Common Uzbek words
+        'salom', 'rahmat', 'iltimos', 'kerak', 'nima', 'qanday', 'qachon', 'qayerda',
+        'loyiha', 'xizmat', 'dastur', 'sayt', 'mobil', 'ishlab', 'chiqish', 'yordam',
+        'kompaniya', 'jamoa', 'texnologiya', 'rivojlantirish', 'yaratish', 'qilish',
+        'bo\'lsangiz', 'muhtoj', 'bering', 'gapirib', 'haqida', 'uchun', 'bilan',
+        # Uzbek-specific characters and patterns
+        'o\'', 'g\'', 'sh', 'ch', 'ng'
+    ]
+
+    # English indicators
+    english_keywords = [
+        'hello', 'thanks', 'thank', 'please', 'need', 'what', 'how', 'when', 'where',
+        'project', 'service', 'app', 'website', 'mobile', 'development', 'help',
+        'company', 'team', 'technology', 'create', 'make', 'can', 'you', 'your',
+        'about', 'tell', 'me', 'with', 'for', 'and', 'the', 'is', 'are', 'very', 'much'
+    ]
+
+    uzbek_score = sum(1 for word in uzbek_keywords if word in text_lower)
+    english_score = sum(1 for word in english_keywords if word in text_lower)
+
+    # If English score is significantly higher, consider it English
+    if english_score > uzbek_score and english_score >= 2:
+        return "english"
+    else:
+        return "uzbek"  # Default to Uzbek for PremiumSoft
+
+def get_order_prompt(language="uzbek"):
+    """Get the order prompt in the specified language."""
+    if language == "english":
+        return "\n\n💼 To prepare a detailed proposal for your project, send the /order command!"
+    else:
+        return "\n\n💼 Sizning loyihangiz uchun batafsil taklif tayyorlashimiz uchun /order buyrug'ini yuboring!"
+
 def get_premiumsoft_info():
     """Get information about premiumsoft.uz in Uzbek"""
     info_text = """
@@ -225,6 +271,67 @@ O'zbekistonning yetakchi elektron hukumat rivojlantirish markazi bilan ishlashga
 🤝 *Agar bizning xizmatlarimizga muhtoj bo'lsangiz, biz bilan bog'lanishdan tortinmang!*
 
 #PremiumSoft #ElektronHukumat #Ozbekiston #Fargona #ITYechimlar
+    """
+    return info_text.strip()
+
+def get_premiumsoft_info_english():
+    """Get information about premiumsoft.uz in English"""
+    info_text = """
+🏢 *PremiumSoft.uz* - Official Brand of Fergana Regional e-Government Center
+
+🌟 *About Us*
+PremiumSoft is the official brand of the Center for Development of Electronic Government under the Fergana Region administration. Operating since 2008, we've grown into a skilled, creative, and professional team of over 30 highly qualified programmers, delivering numerous major IT projects.
+
+📊 *Our Track Record*
+✅ 100+ websites delivered
+✅ 40+ mobile applications
+✅ 25+ information systems
+✅ 15+ years of experience
+✅ Government & private sector expertise
+
+💼 *Core Services*
+• *Website Development*: Custom sites with unique designs, CMS, e-commerce
+• *Mobile Applications*: Android, iOS, Windows apps on Google Play & App Store
+• *Telegram & Web Bots*: Automated conversational solutions
+• *UX/UI Design*: Creative design for websites, systems, apps, banners
+• *Logo & Branding*: Business identity and advertising design
+• *Domain & Hosting*: Affordable hosting in Uzbekistan with 24/7 support
+
+🚀 *Notable Projects*
+• *e-App*: Electronic appeals portal for citizens to government bodies
+• *Inter Faol Murojaat*: Interactive appeals platform for legal/physical persons
+• *My Fergana Portal*: E-government services for citizens and businesses
+• *E-Tahlil Mobile*: Daily activity monitoring with public feedback
+• *MM-Baza Dashboard*: Real-time work schedule and task monitoring
+• *Med KPI*: Healthcare staff rating system using patient feedback
+
+👥 *Leadership Team*
+• Sirojiddin Maxmudov - Team Leader
+• Muxtorov Abdullajon - Project Manager
+• Solijon Abdurakhmonov - First Deputy
+• Feruza Tolipova - Chief Accountant
+• Bakhrom Jalilov - Director of RTM
+
+🧠 *Technical Experts*
+• Mikhail Domozhirov - Full-stack Developer
+• Otabek Ahmadjonov - Backend Team Lead
+• Zokirjon Kholikov - Frontend Team Lead
+• Muhammadaziz Mamasodikov - Mobile Team Lead
+• Inomjon Abduvahobov - UX/UI Designer
+
+📞 *Contact Information*
+🌐 Website: https://premiumsoft.uz
+📧 Email: info@premiumsoft.uz
+📍 Location: Fergana Region, Uzbekistan
+🏢 Address: Fergana city, Mustaqillik Street, 19
+🏛️ Authority: Fergana Regional Administration
+
+💬 *Get Started*
+Ready to work with Uzbekistan's leading e-government development center? Contact us for professional IT solutions!
+
+🤝 *If you need our services, feel free to contact us!*
+
+#PremiumSoft #eGovernment #Uzbekistan #Fergana #TechSolutions
     """
     return info_text.strip()
 
@@ -317,12 +424,23 @@ BUSINESS FOCUS:
 - Interactive citizen engagement platforms
 """
 
-def get_ai_response(user_message, user_name="User"):
-    """Get AI response using Groq API."""
+def get_ai_response(user_message, user_name="User", user_language="uzbek"):
+    """Get AI response using Groq API in the user's language."""
     if not groq_client:
-        return "🤖 AI features are currently unavailable. Please use /info for company information or /help for available commands."
+        if user_language == "english":
+            return "🤖 AI features are currently unavailable. Please use /info for company information or /help for available commands."
+        else:
+            return "🤖 AI xususiyatlari hozircha mavjud emas. Kompaniya ma'lumotlari uchun /info yoki yordam uchun /help dan foydalaning."
 
     try:
+        # Language-specific instructions
+        if user_language == "english":
+            language_instruction = "Always respond in English."
+            fallback_message = "🤖 I'm having trouble processing your request right now. Please try again or use /info for company information."
+        else:
+            language_instruction = "Har doim o'zbek tilida javob bering. Uzbek language is preferred."
+            fallback_message = "🤖 Hozir so'rovingizni qayta ishlay olmayapman. Iltimos, qayta urinib ko'ring yoki kompaniya ma'lumotlari uchun /info dan foydalaning."
+
         # Create context with company information
         system_prompt = f"""You are an AI assistant for PremiumSoft.uz, a software development company in Uzbekistan.
 
@@ -337,6 +455,7 @@ Your role:
 - Be friendly, professional, and knowledgeable
 - If asked about something not related to PremiumSoft.uz or software development, politely redirect to company topics
 - Always be helpful and encourage potential clients to contact the company
+- {language_instruction}
 
 User's name: {user_name}
 """
@@ -357,29 +476,38 @@ User's name: {user_name}
 
     except Exception as e:
         logger.error(f"AI response error: {e}")
-        return "🤖 I'm having trouble processing your request right now. Please try again or use /info for company information."
+        return fallback_message
 
-def handle_lead_collection(chat_id, text, telegram_user):
+def handle_lead_collection(chat_id, text, telegram_user, message_thread_id=None, user_language="uzbek"):
     """Handle lead generation conversation flow."""
     user_data = user_states[chat_id]
 
     if user_data['state'] == UserState.COLLECTING_PROJECT:
         user_data['project'] = text
         user_data['state'] = UserState.COLLECTING_NAME
-        response = "Rahmat! Endi ismingizni yozing:\n\nThank you! Now please write your name:"
-        send_telegram_message(chat_id, response)
+        if user_language == "english":
+            response = "Thank you! Now please write your name:"
+        else:
+            response = "Rahmat! Endi ismingizni yozing:"
+        send_telegram_message(chat_id, response, message_thread_id=message_thread_id)
 
     elif user_data['state'] == UserState.COLLECTING_NAME:
         user_data['name'] = text
         user_data['state'] = UserState.COLLECTING_PHONE
-        response = "Yaxshi! Endi telefon raqamingizni yozing:\n\nGreat! Now please write your phone number:"
-        send_telegram_message(chat_id, response)
+        if user_language == "english":
+            response = "Great! Now please write your phone number:"
+        else:
+            response = "Yaxshi! Endi telefon raqamingizni yozing:"
+        send_telegram_message(chat_id, response, message_thread_id=message_thread_id)
 
     elif user_data['state'] == UserState.COLLECTING_PHONE:
         user_data['phone'] = text
         user_data['state'] = UserState.COLLECTING_EMAIL
-        response = "Ajoyib! Oxirida email manzilingizni yozing:\n\nExcellent! Finally, please write your email address:"
-        send_telegram_message(chat_id, response)
+        if user_language == "english":
+            response = "Excellent! Finally, please write your email address:"
+        else:
+            response = "Ajoyib! Oxirida email manzilingizni yozing:"
+        send_telegram_message(chat_id, response, message_thread_id=message_thread_id)
 
     elif user_data['state'] == UserState.COLLECTING_EMAIL:
         user_data['email'] = text
@@ -391,15 +519,19 @@ def handle_lead_collection(chat_id, text, telegram_user):
         # Reset user state
         user_states[chat_id] = {'state': UserState.NORMAL}
 
-        # Confirm to user
-        response = """Rahmat! Ma'lumotlaringiz muvaffaqiyatli yuborildi. Tez orada siz bilan bog'lanamiz!
+        # Confirm to user in their language
+        if user_language == "english":
+            response = """Thank you! Your information has been successfully sent. We will contact you soon!
 
-Thank you! Your information has been successfully sent. We will contact you soon!
+🤝 If you need our services, feel free to contact us!"""
+        else:
+            response = """Rahmat! Ma'lumotlaringiz muvaffaqiyatli yuborildi. Tez orada siz bilan bog'lanamiz!
 
 🤝 Agar bizning xizmatlarimizga muhtoj bo'lsangiz, biz bilan bog'lanishdan tortinmang!"""
-        send_telegram_message(chat_id, response)
 
-def start_lead_collection(chat_id):
+        send_telegram_message(chat_id, response, message_thread_id=message_thread_id)
+
+def start_lead_collection(chat_id, message_thread_id=None, user_language="uzbek"):
     """Start the lead collection process."""
     user_states[chat_id] = {
         'state': UserState.COLLECTING_PROJECT,
@@ -409,17 +541,18 @@ def start_lead_collection(chat_id):
         'email': ''
     }
 
-    response = """Ajoyib! Sizning loyihangiz haqida batafsil ma'lumot bering:
-• Qanday xizmat kerak?
-• Loyiha maqsadi nima?
-• Qanday funksiyalar bo'lishi kerak?
-
-Great! Please provide detailed information about your project:
+    if user_language == "english":
+        response = """Great! Please provide detailed information about your project:
 • What service do you need?
 • What is the project goal?
 • What features should it have?"""
+    else:
+        response = """Ajoyib! Sizning loyihangiz haqida batafsil ma'lumot bering:
+• Qanday xizmat kerak?
+• Loyiha maqsadi nima?
+• Qanday funksiyalar bo'lishi kerak?"""
 
-    send_telegram_message(chat_id, response)
+    send_telegram_message(chat_id, response, message_thread_id=message_thread_id)
 
 def handle_message(message):
     """Handle a message from Telegram."""
@@ -428,6 +561,9 @@ def handle_message(message):
     text = message.get('text', '')
     user_name = message.get('from', {}).get('first_name', 'Foydalanuvchi')
     telegram_user = message.get('from', {})
+
+    # Extract topic/thread information
+    message_thread_id = message.get('message_thread_id')
 
     if not chat_id:
         logger.error("Message missing chat_id")
@@ -438,17 +574,42 @@ def handle_message(message):
         logger.info(f"Ignoring group message without mention: {text}")
         return
 
-    logger.info(f"Received message from {chat_id}: {text}")
+    logger.info(f"Received message from {chat_id}: {text}" + (f" in thread {message_thread_id}" if message_thread_id else ""))
+
+    # Detect user's language
+    user_language = detect_language(text)
+    logger.info(f"Detected language: {user_language}")
 
     # Handle lead generation states
     if chat_id in user_states and user_states[chat_id]['state'] != UserState.NORMAL:
-        handle_lead_collection(chat_id, text, telegram_user)
+        handle_lead_collection(chat_id, text, telegram_user, message_thread_id, user_language)
         return
 
     # Handle /start command
     if text == '/start':
-        ai_status = "🤖 AI Suhbat: ✅ Mavjud" if groq_client else "🤖 AI Suhbat: ❌ Mavjud emas"
-        welcome_text = f"""👋 Salom {user_name}!
+        if user_language == "english":
+            ai_status = "🤖 AI Chat: ✅ Available" if groq_client else "🤖 AI Chat: ❌ Unavailable"
+            welcome_text = f"""👋 Hello {user_name}!
+
+Welcome to PremiumSoft.uz AI-powered Info Bot!
+
+🚀 *What I can do:*
+• Answer questions about PremiumSoft.uz
+• Provide detailed company information
+• Help with technical inquiries
+• Chat about our services and team
+
+{ai_status}
+
+💬 *Just ask me anything about PremiumSoft.uz!*
+Or use these commands:
+• /info - Company overview
+• /help - Available commands
+• /ai - AI chat status
+• /order - Place an order"""
+        else:
+            ai_status = "🤖 AI Suhbat: ✅ Mavjud" if groq_client else "🤖 AI Suhbat: ❌ Mavjud emas"
+            welcome_text = f"""👋 Salom {user_name}!
 
 PremiumSoft.uz AI-powered ma'lumot botiga xush kelibsiz!
 
@@ -468,18 +629,45 @@ Yoki quyidagi buyruqlardan foydalaning:
 • /order - Buyurtma berish"""
 
         response_with_cta = add_cta_to_message(welcome_text)
-        send_telegram_message(chat_id, response_with_cta, parse_mode="Markdown")
+        send_telegram_message(chat_id, response_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
 
     # Handle /info command
     elif text == '/info':
-        info_text = get_premiumsoft_info()
+        if user_language == "english":
+            info_text = get_premiumsoft_info_english()
+        else:
+            info_text = get_premiumsoft_info()
         info_with_cta = add_cta_to_message(info_text)
-        send_telegram_message(chat_id, info_with_cta, parse_mode="Markdown")
+        send_telegram_message(chat_id, info_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
 
     # Handle /help command
     elif text == '/help':
-        ai_status = "✅ Mavjud - Biror narsa so'rang!" if groq_client else "❌ Hozircha mavjud emas"
-        help_text = f"""
+        if user_language == "english":
+            ai_status = "✅ Available - Just ask me anything!" if groq_client else "❌ Currently unavailable"
+            help_text = f"""
+🤖 *PremiumSoft.uz AI Info Bot*
+
+*Available commands:*
+/start - Start the bot and see welcome message
+/info - Get detailed company information
+/help - Show this help message
+/ai - Check AI chat status
+/order - Start order process
+
+*AI Chat:* {ai_status}
+
+💬 *How to use:*
+Just type any question about PremiumSoft.uz and I'll answer using AI!
+
+*Examples:*
+• "Tell me about your mobile development services"
+• "Who are your team members?"
+• "What technologies do you use?"
+• "How can you help my startup?"
+            """
+        else:
+            ai_status = "✅ Mavjud - Biror narsa so'rang!" if groq_client else "❌ Hozircha mavjud emas"
+            help_text = f"""
 🤖 *PremiumSoft.uz AI Ma'lumot Bot*
 
 *Mavjud buyruqlar:*
@@ -499,18 +687,53 @@ PremiumSoft.uz haqida biror savol yozing va men AI yordamida javob beraman!
 • "Jamoa a'zolaringiz kimlar?"
 • "Qanday texnologiyalardan foydalanasiz?"
 • "Mening startupimga qanday yordam bera olasiz?"
-        """
+            """
         help_with_cta = add_cta_to_message(help_text.strip())
-        send_telegram_message(chat_id, help_with_cta, parse_mode="Markdown")
+        send_telegram_message(chat_id, help_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
 
     # Handle /order command
     elif text == '/order' or 'buyurtma' in text.lower() or 'order' in text.lower():
-        start_lead_collection(chat_id)
+        start_lead_collection(chat_id, message_thread_id, user_language)
 
     # Handle /ai command
     elif text == '/ai':
-        if groq_client:
-            ai_text = """🤖 *AI Suhbat Holati: ✅ FAOL*
+        if user_language == "english":
+            if groq_client:
+                ai_text = """🤖 *AI Chat Status: ✅ ACTIVE*
+
+I'm powered by Groq's Llama3 AI model and have comprehensive knowledge about:
+
+📋 *What I know about PremiumSoft.uz:*
+• All services and technologies
+• Team members and their expertise
+• Company values and approach
+• Contact information and location
+
+💬 *How to chat with me:*
+Just ask me anything! No special commands needed.
+
+*Try asking:*
+• "What mobile technologies do you use?"
+• "Tell me about Muhammadaziz"
+• "How can you help my e-commerce project?"
+• "What's your development process?"
+"""
+            else:
+                ai_text = """🤖 *AI Chat Status: ❌ UNAVAILABLE*
+
+AI features are currently disabled. This could be because:
+• Groq API key is not configured
+• Service is temporarily unavailable
+
+📋 *Available alternatives:*
+• Use /info for detailed company information
+• Contact us directly at info@premiumsoft.uz
+• Visit our website: https://premiumsoft.uz
+
+The bot will still work for basic information!"""
+        else:
+            if groq_client:
+                ai_text = """🤖 *AI Suhbat Holati: ✅ FAOL*
 
 Men Groq'ning Llama3 AI modeli bilan ishlayman va quyidagilar haqida to'liq ma'lumotga egaman:
 
@@ -529,8 +752,8 @@ Shunchaki biror narsa so'rang! Maxsus buyruqlar kerak emas.
 • "Mening elektron tijorat loyihamga qanday yordam bera olasiz?"
 • "Ishlab chiqish jarayoningiz qanday?"
 """
-        else:
-            ai_text = """🤖 *AI Suhbat Holati: ❌ MAVJUD EMAS*
+            else:
+                ai_text = """🤖 *AI Suhbat Holati: ❌ MAVJUD EMAS*
 
 AI xususiyatlari hozircha o'chirilgan. Buning sababi:
 • Groq API kaliti sozlanmagan
@@ -544,15 +767,18 @@ AI xususiyatlari hozircha o'chirilgan. Buning sababi:
 Bot asosiy ma'lumotlar uchun ishlashda davom etadi!"""
 
         ai_with_cta = add_cta_to_message(ai_text)
-        send_telegram_message(chat_id, ai_with_cta, parse_mode="Markdown")
+        send_telegram_message(chat_id, ai_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
 
     # Handle all other messages with AI
     else:
         # Check if it's a command we don't recognize
         if text.startswith('/'):
-            response_text = f"❓ Noma'lum buyruq: {text}\n\nMavjud buyruqlarni ko'rish uchun /help dan foydalaning yoki PremiumSoft.uz haqida biror narsa so'rang!"
+            if user_language == "english":
+                response_text = f"❓ Unknown command: {text}\n\nUse /help to see available commands or just ask me anything about PremiumSoft.uz!"
+            else:
+                response_text = f"❓ Noma'lum buyruq: {text}\n\nMavjud buyruqlarni ko'rish uchun /help dan foydalaning yoki PremiumSoft.uz haqida biror narsa so'rang!"
             response_with_cta = add_cta_to_message(response_text)
-            send_telegram_message(chat_id, response_with_cta)
+            send_telegram_message(chat_id, response_with_cta, message_thread_id=message_thread_id)
         else:
             # Check for service interest keywords
             service_keywords = [
@@ -563,22 +789,20 @@ Bot asosiy ma'lumotlar uchun ishlashda davom etadi!"""
 
             if any(keyword in text.lower() for keyword in service_keywords):
                 # Trigger lead collection for service inquiries
-                ai_response = get_ai_response(text, user_name)
+                ai_response = get_ai_response(text, user_name, user_language)
                 ai_with_cta = add_cta_to_message(ai_response)
-                send_telegram_message(chat_id, ai_with_cta)
 
-                # Follow up with lead collection offer
-                follow_up = """
-💼 Sizning loyihangiz uchun batafsil taklif tayyorlashimiz uchun /order buyrug'ini yuboring!
+                # Consolidate order prompt into the main response
+                order_prompt = get_order_prompt(user_language)
+                consolidated_response = ai_with_cta + order_prompt
 
-💼 To prepare a detailed proposal for your project, send the /order command!"""
-                send_telegram_message(chat_id, follow_up)
+                send_telegram_message(chat_id, consolidated_response, message_thread_id=message_thread_id)
             else:
                 # Use AI to respond to the message
                 logger.info(f"Processing AI request from {user_name}: {text}")
-                ai_response = get_ai_response(text, user_name)
+                ai_response = get_ai_response(text, user_name, user_language)
                 ai_with_cta = add_cta_to_message(ai_response)
-                send_telegram_message(chat_id, ai_with_cta)
+                send_telegram_message(chat_id, ai_with_cta, message_thread_id=message_thread_id)
 
 def setup_webhook(host, custom_url=None):
     """Set up webhook for the bot."""
