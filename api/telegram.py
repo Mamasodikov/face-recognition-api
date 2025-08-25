@@ -372,14 +372,40 @@ def detect_language(text):
     'with', 'for', 'and', 'the', 'is', 'are', 'was', 'were', 'very', 'much'
     ]
 
-    uzbek_score = sum(1 for word in uzbek_keywords if word in text_lower)
-    english_score = sum(1 for word in english_keywords if word in text_lower)
+    # Check for explicit English requests first
+    explicit_english_requests = [
+        'english', 'ingliz', 'inglizcha', 'in english', 'speak english',
+        'can you speak english', 'switch to english', 'ingliz tilida',
+        'please respond in english', 'answer in english'
+    ]
 
-    # If English score is significantly higher, consider it English
-    if english_score > uzbek_score and english_score >= 2:
+    if any(phrase in text_lower for phrase in explicit_english_requests):
         return "english"
-    else:
-        return "uzbek"  # Default to Uzbek for PremiumSoft
+
+    # Very specific English phrases that indicate clear English intent
+    strong_english_phrases = [
+        'hello there', 'thank you very much', 'could you please tell me',
+        'i would like to know', 'can you tell me about', 'i need information about',
+        'what can you do for me', 'how can you help me with', 'please provide information'
+    ]
+
+    # Only switch to English if there's a very specific English phrase AND no Uzbek words
+    has_strong_english = any(phrase in text_lower for phrase in strong_english_phrases)
+
+    # Check for any Uzbek words (even common ones)
+    uzbek_words = [
+        'salom', 'rahmat', 'iltimos', 'kerak', 'nima', 'qanday', 'qachon', 'qayerda',
+        'loyiha', 'xizmat', 'dastur', 'sayt', 'mobil', 'yordam', 'kompaniya', 'jamoa',
+        'haqida', 'uchun', 'bilan', 'qilish', 'berish', 'olish', 'ko\'rish', 'bo\'lish'
+    ]
+    has_uzbek_words = any(word in text_lower for word in uzbek_words)
+
+    # Very strict English detection - only if very specific English phrases and NO Uzbek
+    if has_strong_english and not has_uzbek_words and len(text.split()) >= 4:
+        return "english"
+
+    # Default to Uzbek in ALL other cases
+    return "uzbek"
 
 def get_order_prompt(language="uzbek"):
     """Get the order prompt in the specified language."""
@@ -394,22 +420,36 @@ def get_premiumsoft_info():
 🏢 *PremiumSoft.uz* - Farg'ona viloyati elektron hukumat markazining rasmiy brendi
 
 🌟 *Biz haqimizda*
-PremiumSoft - Farg'ona viloyati hokimligi qoshidagi Elektron hukumat rivojlantirish markazining rasmiy brendidir. 2008 yildan beri faoliyat yuritib, 30 dan ortiq yuqori malakali dasturchidan iborat professional jamoaga aylandik va ko'plab yirik IT loyihalarni amalga oshirdik.
+PremiumSoft — bu Farg'onada joylashgan, ko'p yillik tajribaga ega bo'lgan professional, kreativ va jips jamoa. Biz davlat va xususiy sektor uchun maxsus informatsion tizimlar, veb-saytlar, mobil ilovalar, va Telegram botlar ishlab chiqamiz.
 
-📊 *Bizning natijalarimiz*
-✅ 100+ veb-sayt yaratildi
-✅ 40+ mobil ilova ishlab chiqildi
-✅ 25+ axborot tizimi yaratildi
-✅ 15+ yillik tajriba
-✅ Davlat va xususiy sektor tajribasi
+Kompaniya "Farg'ona viloyati elektron hukumatni rivojlantirish markazi" ning "PremiumSoft" savdo belgisi ostida faoliyat yuritadi.
 
-💼 *Asosiy xizmatlar*
-• *Veb-sayt ishlab chiqish*: Noyob dizayn, CMS, elektron tijorat bilan maxsus saytlar
-• *Mobil ilovalar*: Android, iOS, Windows uchun ilovalar Google Play va App Store'da
-• *Telegram va Veb-botlar*: Platformalar bo'ylab avtomatlashtirilgan suhbat yechimlari
-• *UX/UI Dizayn*: Veb-saytlar, tizimlar, ilovalar, bannerlar uchun ijodiy dizayn
-• *Logo va Brending*: Biznes identifikatsiyasi va reklama dizayni
-• *Domen va Hosting*: O'zbekistonda arzon hosting va domen xizmatlari, 24/7 qo'llab-quvvatlash
+📊 *Statistika va yutuqlar*
+PremiumSoft jamoasi quyidagi natijalarga erishgan:
+
+✅ 1208+ veb-sayt yaratildi
+✅ 46+ mobil ilova ishlab chiqildi
+✅ 26+ informatsion tizim qurildi
+✅ 75+ Telegram bot yaratildi
+✅ 10+ dasturiy mahsulot ishlab chiqildi
+✅ 2268+ mijoz xizmat ko'rsatildi
+
+Bu raqamlar kompaniyaning keng ko'lamli tajribasi va ishonchli hamkorlik asosida ishlashini ko'rsatadi.
+
+🧭 *Xizmatlar ro'yxati*
+PremiumSoft quyidagi xizmatlarni taklif etadi:
+
+• *Veb-saytlar yaratish* (korporativ, e-commerce, portal)
+• *Mobil ilovalar ishlab chiqish* (iOS, Android)
+• *Telegram botlar* (avtomatlashtirilgan xizmatlar uchun)
+• *Informatsion tizimlar* (CRM, ERP, e-hukumat)
+• *UX/UI dizayn* (foydalanuvchi interfeysi va tajribasi)
+• *Brend logotiplari va identifikatsiya*
+• *Hosting va domen xizmatlari*
+• *Server texnik xizmat ko'rsatish*
+• *IT-konsalting va raqamlashtirish strategiyasi*
+
+Bundan tashqari, raqamlashtirish bo'yicha dastlabki tahlil va konsultatsiya bepul taqdim etiladi.
 
 🚀 *Muhim loyihalar*
 • *e-App*: Fuqarolarning davlat organlariga murojaat qilish elektron portali
@@ -419,18 +459,28 @@ PremiumSoft - Farg'ona viloyati hokimligi qoshidagi Elektron hukumat rivojlantir
 • *MM-Baza Dashboard*: Ish jadvallari va bajarilgan vazifalarni real vaqtda monitoring qilish tizimi
 • *Med KPI*: Bemorlar fikri asosida tibbiyot xodimlarini baholash tizimi
 
-👥 *Rahbariyat jamoasi*
-• Sirojiddin Maxmudov - Jamoa rahbari
-• Solijon Abdurakhmonov - Birinchi o'rinbosar
-• Muxtorov Abdullajon - Loyiha menejeri
-• Feruza Tolipova - Bosh hisobchi
+🧑‍💻 *Jamoa a'zolari*
+PremiumSoft jamoasi turli sohalarda yetakchi mutaxassislardan iborat:
 
-🧠 *Texnik mutaxassislar*
-• Mikhail Domozhirov - Full-stack dasturchi
-• Otabek Ahmadjonov - Backend jamoa timlidi
-• Zokirjon Kholikov - Frontend jamoa timlidi
-• Muhammadaziz Mamasodikov - Mobil jamoa timlidi
-• Inomjon Abduvahobov - UX/UI dizayner
+• Sirojiddin Maxmudov — Rahbar
+• Solijon Abdurakhmonov - Birinchi o'rinbosar
+• Feruza Tolipova — Bosh buxgalter
+• Muxtorov Abdullajon — Loyihalar menejeri
+• Muhammadaziz Mamasaodiqov — Team Lead, mobil dasturchi
+• Zokirjon Xolikov — Team Lead, frontend dasturchi
+• Otabek Ahmadjonov — Team Lead, backend dasturchi
+• Inomjon Abduvahobov — UX/UI dizayner
+• Mikhail Domojirov — Full-stack dasturchi
+
+Jamoa har bir loyiha uchun individual yondashuv va zamonaviy texnologiyalar asosida ishlaydi.
+
+💡 *Yondashuv va qadriyatlar*
+PremiumSoft quyidagi qadriyatlarga amal qiladi:
+
+• *Innovatsiya* — har bir loyiha zamonaviy texnologiyalar asosida amalga oshiriladi
+• *Mas'uliyat* — mijozlar bilan shartnoma asosida, aniq muddat va sifat kafolati bilan ishlash
+• *Yoshlar bilan ishlash* — yangi avlod dasturchilarini o'qitish va ish bilan ta'minlash
+• *Eksportga yo'naltirilganlik* — IT mahsulotlarini xalqaro bozorlarga olib chiqish
 
 📞 *Aloqa ma'lumotlari*
 🌐 Veb-sayt: https://premiumsoft.uz
@@ -455,22 +505,36 @@ def get_premiumsoft_info_english():
 🏢 *PremiumSoft.uz* - Official Brand of Fergana Regional e-Government Center
 
 🌟 *About Us*
-PremiumSoft is the official brand of the Center for Development of Electronic Government under the Fergana Region administration. Operating since 2008, we've grown into a skilled, creative, and professional team of over 30 highly qualified programmers, delivering numerous major IT projects.
+PremiumSoft is a professional, creative and experienced team located in Fergana. They develop custom information systems, websites, mobile applications, and Telegram bots for government and private sectors.
 
-📊 *Our Track Record*
-✅ 100+ websites delivered
-✅ 40+ mobile applications
-✅ 25+ information systems
-✅ 15+ years of experience
-✅ Government & private sector expertise
+The company operates under the brand "Fergana Regional Electronic Government Development Center".
 
-💼 *Core Services*
-• *Website Development*: Custom sites with unique designs, CMS, e-commerce
-• *Mobile Applications*: Android, iOS, Windows apps on Google Play & App Store
-• *Telegram & Web Bots*: Automated conversational solutions
-• *UX/UI Design*: Creative design for websites, systems, apps, banners
-• *Logo & Branding*: Business identity and advertising design
-• *Domain & Hosting*: Affordable hosting in Uzbekistan with 24/7 support
+📊 *Statistics and Achievements*
+PremiumSoft team has achieved the following results:
+
+✅ 1208+ websites created
+✅ 46+ mobile applications developed
+✅ 26+ information systems built
+✅ 75+ Telegram bots created
+✅ 10+ software products developed
+✅ 2268+ clients served
+
+These numbers demonstrate the company's extensive experience and reliable partnership-based work.
+
+🧭 *Services List*
+PremiumSoft offers the following services:
+
+• *Website Development* (corporate, e-commerce, portal)
+• *Mobile Application Development* (iOS, Android)
+• *Telegram Bots* (for automated services)
+• *Information Systems* (CRM, ERP, e-government)
+• *UX/UI Design* (user interface and experience)
+• *Brand Logos and Identity*
+• *Hosting and Domain Services*
+• *Server Technical Support*
+• *IT Consulting and Digitalization Strategy*
+
+Additionally, initial analysis and consultation on digitalization is provided free of charge.
 
 🚀 *Notable Projects*
 • *e-App*: Electronic appeals portal for citizens to government bodies
@@ -480,18 +544,27 @@ PremiumSoft is the official brand of the Center for Development of Electronic Go
 • *MM-Baza Dashboard*: Real-time work schedule and task monitoring
 • *Med KPI*: Healthcare staff rating system using patient feedback
 
-👥 *Leadership Team*
-• Sirojiddin Maxmudov - Team Leader
-• Solijon Abdurakhmonov - First Deputy
-• Muxtorov Abdullajon - Project Manager
-• Feruza Tolipova - Chief Accountant
+🧑‍💻 *Team Members*
+PremiumSoft team consists of leading specialists in various fields:
 
-🧠 *Technical Experts*
-• Mikhail Domozhirov - Full-stack Developer
-• Otabek Ahmadjonov - Backend Team Lead
-• Zokirjon Kholikov - Frontend Team Lead
-• Muhammadaziz Mamasodikov - Mobile Team Lead
-• Inomjon Abduvahobov - UX/UI Designer
+• Sirojiddin Maxmudov — Leader
+• Muxtorov Abdullajon — Project Manager
+• Muhammadaziz Mamasaodiqov — Team Lead, Mobile Developer
+• Zokirjon Xolikov — Team Lead, Frontend Developer
+• Otabek Ahmadjonov — Team Lead, Backend Developer
+• Inomjon Abduvahobov — UX/UI Designer
+• Feruza Tolipova — Chief Accountant
+• Mikhail Domojirov — Full-stack Developer
+
+The team works with individual approach for each project using modern technologies.
+
+💡 *Approach and Values*
+PremiumSoft follows these core values:
+
+• *Innovation* — every project is implemented using modern technologies
+• *Responsibility* — working with clients based on contracts, with clear deadlines and quality guarantees
+• *Youth Development* — training and employing new generation programmers
+• *Export Orientation* — bringing IT products to international markets
 
 📞 *Contact Information*
 🌐 Website: https://premiumsoft.uz
@@ -525,19 +598,27 @@ COMPANY OVERVIEW:
 - Specialization: E-government solutions, web development, mobile apps
 
 TRACK RECORD & ACHIEVEMENTS:
-- 100+ websites delivered
-- 40+ mobile applications developed
-- 25+ information systems created
+- 1208+ websites delivered
+- 46+ mobile applications developed
+- 26+ information systems created
+- 75+ Telegram bots created
+- 10+ software products developed
+- 2268+ clients served
 - Serves both government and private sector clients
-- 15+ years of continuous operation since 2008
+- Multi-year experience with extensive portfolio
 
 CORE SERVICES:
-1. Website Development: Custom sites with unique designs, content management systems, e-commerce features
-2. Mobile Applications: Apps for Android, iOS, and Windows; published on Google Play and App Store
-3. Telegram & Web Bots: Automated conversational solutions across platforms
-4. UX/UI Design: Creative design for websites, systems, apps, banners, presentation materials
-5. Logo & Branding: Business identity and advertising design
-6. Domain & Hosting: Affordable hosting and domain services in Uzbekistan, free domain registration when hosting exceeds 1 GB, 24/7 support
+1. Website Development: Corporate, e-commerce, portal websites
+2. Mobile Application Development: iOS, Android applications
+3. Telegram Bots: Automated services and conversational solutions
+4. Information Systems: CRM, ERP, e-government systems
+5. UX/UI Design: User interface and experience design
+6. Brand Logos and Identity: Corporate branding and identification
+7. Hosting and Domain Services: Server hosting and domain registration
+8. Server Technical Support: Technical maintenance and support
+9. IT Consulting and Digitalization Strategy: Digital transformation consulting
+
+Additionally, initial analysis and consultation on digitalization is provided free of charge.
 
 NOTABLE PROJECTS:
 1. e-App: Electronic appeals portal enabling citizens to submit feedback to government bodies efficiently (Fergana regional administration)
@@ -547,30 +628,27 @@ NOTABLE PROJECTS:
 5. MM-Baza Dashboard: System for real-time monitoring of work schedules and completed tasks across public and private organizations
 6. Med KPI (July 2024): Healthcare staff rating system using patient feedback to evaluate medical personnel and facilities
 
-LEADERSHIP & MANAGEMENT TEAM:
-- Sirojiddin Maxmudov: Team Leader
-- Muxtorov Abdullajon: Project Manager
-- Solijon Abdurakhmonov: First Deputy
-- Feruza Tolipova: Chief Accountant
-- Bakhrom Jalilov: Director of RTM
+TEAM MEMBERS:
+PremiumSoft team consists of leading specialists in various fields:
 
-TECHNICAL EXPERTS & DEVELOPERS:
-- Mikhail Domozhirov: Full-stack Developer
-- Otabek Ahmadjonov: Backend Team Lead
-- Zokirjon Kholikov: Frontend Team Lead
-- Nodirbek Abdumansurov: Frontend Developer
-- Odiljon Sultonov: Backend Developer
-- Abbosbek Mahmudjonov: Frontend Developer
+- Sirojiddin Maxmudov — Leader
+- Muxtorov Abdullajon — Project Manager
+- Muhammadaziz Mamasaodiqov — Team Lead, Mobile Developer
+- Zokirjon Xolikov — Team Lead, Frontend Developer
+- Otabek Ahmadjonov — Team Lead, Backend Developer
+- Inomjon Abduvahobov — UX/UI Designer
+- Feruza Tolipova — Chief Accountant
+- Mikhail Domojirov — Full-stack Developer
 
-MOBILE DEVELOPMENT TEAM:
-- Muhammadaziz Mamasodikov: Mobile Team Lead (experienced in leading development for multiple startups and projects, helps translate business requirements into functional software)
-- Akmaljon Sotvoldiev: Mobile Developer
+The team works with individual approach for each project using modern technologies.
 
-DESIGN & UX/UI TEAM:
-- Inomjon Abduvahobov: UX/UI Designer
+APPROACH AND VALUES:
+PremiumSoft follows these core values:
 
-SUPPORT & SPECIALISTS:
-- Sodirjon Abdurakhmonov: IT Specialist
+- Innovation — every project is implemented using modern technologies
+- Responsibility — working with clients based on contracts, with clear deadlines and quality guarantees
+- Youth Development — training and employing new generation programmers
+- Export Orientation — bringing IT products to international markets
 - Oybek Akbarov: Call Center Specialist
 - Nuriddin Juraev: Technical Specialist
 
@@ -611,12 +689,12 @@ def get_ai_response(user_message, user_name="User", user_language="uzbek"):
             return "🤖 AI xususiyatlari hozircha mavjud emas. Kompaniya ma'lumotlari uchun /info yoki yordam uchun /help dan foydalaning."
 
     try:
-        # Language-specific instructions
+        # Language-specific instructions - default to Uzbek
         if user_language == "english":
-            language_instruction = "Always respond in English."
+            language_instruction = "The user has explicitly requested English. Respond in English only."
             fallback_message = "🤖 I'm having trouble processing your request right now. Please try again or use /info for company information."
         else:
-            language_instruction = "Har doim o'zbek tilida javob bering. Uzbek language is preferred."
+            language_instruction = "FAQAT o'zbek tilida javob bering. Always respond in Uzbek language only. Do not use English unless explicitly requested."
             fallback_message = "🤖 Hozir so'rovingizni qayta ishlay olmayapman. Iltimos, qayta urinib ko'ring yoki kompaniya ma'lumotlari uchun /info dan foydalaning."
 
         # Create context with company information
@@ -737,7 +815,7 @@ Istalgan vaqtda /order buyrug'i orqali qaytadan boshlashingiz mumkin.
         send_telegram_message(chat_id, response, message_thread_id=message_thread_id)
 
 def start_lead_collection(chat_id, message_thread_id=None, user_language="uzbek"):
-    """Start the lead collection process."""
+    """Start the lead collection process - Default to Uzbek."""
     user_states[chat_id] = {
         'state': UserState.COLLECTING_PROJECT,
         'project': '',
@@ -746,16 +824,20 @@ def start_lead_collection(chat_id, message_thread_id=None, user_language="uzbek"
         'email': ''
     }
 
+    # Always default to Uzbek unless explicitly English
     if user_language == "english":
         response = """Great! Please provide detailed information about your project:
 • What service do you need?
 • What is the project goal?
 • What features should it have?"""
     else:
+        # Default to Uzbek
         response = """Ajoyib! Sizning loyihangiz haqida batafsil ma'lumot bering:
 • Qanday xizmat kerak?
 • Loyiha maqsadi nima?
-• Qanday funksiyalar bo'lishi kerak?"""
+• Qanday funksiyalar bo'lishi kerak?
+
+💡 *Ingliz tilida javob olish uchun "inglizcha" deb yozing*"""
 
     send_telegram_message(chat_id, response, message_thread_id=message_thread_id)
 
@@ -796,9 +878,10 @@ def handle_message(message):
         handle_lead_collection(chat_id, clean_text, telegram_user, message_thread_id, user_language)
         return
 
-    # Handle /start command
+    # Handle /start command - Default to Uzbek
     if clean_text == '/start':
-        if user_language == "english":
+        # Always start with Uzbek unless explicitly requested English
+        if user_language == "english" and ("english" in clean_text.lower() or "ingliz" in clean_text.lower()):
             ai_status = "🤖 AI Chat: ✅ Available" if groq_client else "🤖 AI Chat: ❌ Unavailable"
             welcome_text = f"""👋 Hello {user_name}!
 
@@ -819,6 +902,7 @@ Or use these commands:
 • /ai - AI chat status
 • /order - Place an order"""
         else:
+            # Default to Uzbek for all users
             ai_status = "🤖 AI Suhbat: ✅ Mavjud" if groq_client else "🤖 AI Suhbat: ❌ Mavjud emas"
             welcome_text = f"""👋 Salom {user_name}!
 
@@ -837,23 +921,28 @@ Yoki quyidagi buyruqlardan foydalaning:
 • /info - Kompaniya haqida
 • /help - Mavjud buyruqlar
 • /ai - AI suhbat holati
-• /order - Buyurtma berish"""
+• /order - Buyurtma berish
+
+💡 *Ingliz tilida javob olish uchun "inglizcha" yoki "english" deb yozing*"""
 
         response_with_cta = add_cta_to_message(welcome_text)
         send_telegram_message(chat_id, response_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
 
-    # Handle /info command
+    # Handle /info command - Default to Uzbek
     elif clean_text == '/info':
-        if user_language == "english":
+        # Only use English if explicitly requested
+        if user_language == "english" and ("english" in text.lower() or "ingliz" in text.lower()):
             info_text = get_premiumsoft_info_english()
         else:
+            # Default to Uzbek
             info_text = get_premiumsoft_info()
         info_with_cta = add_cta_to_message(info_text)
         send_telegram_message(chat_id, info_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
 
-    # Handle /help command
+    # Handle /help command - Default to Uzbek
     elif clean_text == '/help':
-        if user_language == "english":
+        # Only use English if explicitly requested
+        if user_language == "english" and ("english" in text.lower() or "ingliz" in text.lower()):
             ai_status = "✅ Available - Just ask me anything!" if groq_client else "❌ Currently unavailable"
             help_text = f"""
 🤖 *PremiumSoft.uz AI Info Bot*
@@ -962,9 +1051,10 @@ PremiumSoft.uz haqida biror savol yozing va men AI yordamida javob beraman!
         location_with_cta = add_cta_to_message(location_text)
         send_telegram_message(chat_id, location_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
 
-    # Handle /ai command
+    # Handle /ai command - Default to Uzbek
     elif clean_text == '/ai':
-        if user_language == "english":
+        # Only use English if explicitly requested
+        if user_language == "english" and ("english" in text.lower() or "ingliz" in text.lower()):
             if groq_client:
                 ai_text = """🤖 *AI Chat Status: ✅ ACTIVE*
 
@@ -1066,35 +1156,41 @@ Bot asosiy ma'lumotlar uchun ishlashda davom etadi!"""
             send_telegram_message(chat_id, location_with_cta, parse_mode="Markdown", message_thread_id=message_thread_id)
             return
 
-        # Check for greeting messages
+        # Check for greeting messages - Default to Uzbek
         greeting_keywords = ['salom', 'hello', 'hi', 'assalomu alaykum', 'good morning', 'good day', 'xayrli']
         if any(keyword in clean_text.lower() for keyword in greeting_keywords):
-            if user_language == "english":
+            # Only use English if explicitly requested
+            if user_language == "english" and ("english" in text.lower() or "ingliz" in text.lower()):
                 greeting_response = f"Hello {user_name}! 👋 Welcome to PremiumSoft.uz! How can I help you today?"
             else:
+                # Default to Uzbek
                 greeting_response = f"Salom {user_name}! 👋 PremiumSoft.uz ga xush kelibsiz! Bugun sizga qanday yordam bera olaman?"
 
             greeting_with_cta = add_cta_to_message(greeting_response)
             send_telegram_message(chat_id, greeting_with_cta, message_thread_id=message_thread_id)
             return
 
-        # Check for thanks messages
+        # Check for thanks messages - Default to Uzbek
         thanks_keywords = ['rahmat', 'thank', 'thanks', 'tashakkur', 'grateful']
         if any(keyword in clean_text.lower() for keyword in thanks_keywords):
-            if user_language == "english":
+            # Only use English if explicitly requested
+            if user_language == "english" and ("english" in text.lower() or "ingliz" in text.lower()):
                 thanks_response = f"You're welcome, {user_name}! 😊 Is there anything else I can help you with?"
             else:
+                # Default to Uzbek
                 thanks_response = f"Arzimaydi, {user_name}! 😊 Yana biror narsada yordam bera olamanmi?"
 
             thanks_with_cta = add_cta_to_message(thanks_response)
             send_telegram_message(chat_id, thanks_with_cta, message_thread_id=message_thread_id)
             return
 
-        # Check if it's a command we don't recognize
+        # Check if it's a command we don't recognize - Default to Uzbek
         if clean_text.startswith('/'):
-            if user_language == "english":
+            # Only use English if explicitly requested
+            if user_language == "english" and ("english" in text.lower() or "ingliz" in text.lower()):
                 response_text = f"❓ Unknown command: {clean_text}\n\nUse /help to see available commands or just ask me anything about PremiumSoft.uz!"
             else:
+                # Default to Uzbek
                 response_text = f"❓ Noma'lum buyruq: {clean_text}\n\nMavjud buyruqlarni ko'rish uchun /help dan foydalaning yoki PremiumSoft.uz haqida biror narsa so'rang!"
             response_with_cta = add_cta_to_message(response_text)
             send_telegram_message(chat_id, response_with_cta, message_thread_id=message_thread_id)
