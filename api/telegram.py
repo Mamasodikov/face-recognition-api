@@ -68,51 +68,58 @@ def send_telegram_message(chat_id, text, parse_mode=None):
 def get_premiumsoft_info():
     """Get information about premiumsoft.uz"""
     info_text = """
-🏢 *PremiumSoft.uz* - Premium Software Solutions
+🏢 *PremiumSoft.uz* - Official Brand of Fergana Regional e-Government Center
 
 🌟 *About Us*
-PremiumSoft.uz is a leading software development company in Uzbekistan, specializing in creating high-quality digital solutions for businesses of all sizes.
+PremiumSoft is the official brand of the Center for Development of Electronic Government under the Fergana Region administration. Operating since 2008, we've grown into a skilled, creative, and professional team of over 30 highly qualified programmers, delivering numerous major IT projects.
 
-💼 *Our Services*
-• Custom Software Development
-• Web Application Development
-• Mobile App Development (iOS & Android)
-• E-commerce Solutions
-• Database Design & Management
-• Cloud Solutions & Migration
-• IT Consulting & Support
-• UI/UX Design Services
+📊 *Our Track Record*
+✅ 100+ websites delivered
+✅ 40+ mobile applications
+✅ 25+ information systems
+✅ 15+ years of experience
+✅ Government & private sector expertise
 
-🚀 *Technologies We Use*
-• Frontend: React, Vue.js, Angular, HTML5/CSS3
-• Backend: Node.js, Python, PHP, Java
-• Mobile: React Native, Flutter, Swift, Kotlin
-• Databases: PostgreSQL, MySQL, MongoDB
-• Cloud: AWS, Google Cloud, Azure
+💼 *Core Services*
+• *Website Development*: Custom sites with unique designs, CMS, e-commerce
+• *Mobile Applications*: Android, iOS, Windows apps on Google Play & App Store
+• *Telegram & Web Bots*: Automated conversational solutions
+• *UX/UI Design*: Creative design for websites, systems, apps, banners
+• *Logo & Branding*: Essential business identity and advertising design
+• *Domain & Hosting*: Affordable hosting in Uzbekistan with 24/7 support
 
-🎯 *Why Choose Us*
-✅ Expert team of developers
-✅ Agile development methodology
-✅ 24/7 technical support
-✅ Competitive pricing
-✅ On-time project delivery
-✅ Post-launch maintenance
+🚀 *Notable Projects*
+• *e-App*: Electronic appeals portal for citizens to government bodies
+• *Inter Faol Murojaat*: Interactive appeals platform for legal/physical persons
+• *My Fergana Portal*: E-government services for citizens and businesses
+• *E-Tahlil Mobile*: Daily activity monitoring with public feedback
+• *MM-Baza Dashboard*: Real-time work schedule and task monitoring
+• *Med KPI*: Healthcare staff rating system using patient feedback
 
-👥 *Team Members*
-• Muhammad Aziz Mamasodikov - Mobile Developer (Led development for multiple startups)
-• Expert developers specializing in various technologies
-• Experienced project managers and consultants
+👥 *Leadership Team*
+• Sirojiddin Maxmudov - Team Leader
+• Muxtorov Abdullajon - Project Manager
+• Solijon Abdurakhmonov - First Deputy
+• Feruza Tolipova - Chief Accountant
+• Bakhrom Jalilov - Director of RTM
+
+🧠 *Technical Experts*
+• Mikhail Domozhirov - Full-stack Developer
+• Otabek Ahmadjonov - Backend Team Lead
+• Zokirjon Kholikov - Frontend Team Lead
+• Muhammadaziz Mamasodikov - Mobile Team Lead
+• Inomjon Abduvahobov - UX/UI Designer
 
 📞 *Contact Information*
 🌐 Website: https://premiumsoft.uz
 📧 Email: info@premiumsoft.uz
-📱 Phone: +998 (XX) XXX-XX-XX
-📍 Location: Tashkent, Uzbekistan
+📍 Location: Fergana Region, Uzbekistan
+🏛️ Authority: Fergana Regional Administration
 
 💬 *Get Started*
-Ready to transform your business with premium software solutions? Contact us today for a free consultation!
+Ready to work with Uzbekistan's leading e-government development center? Contact us for professional IT solutions!
 
-#PremiumSoft #SoftwareDevelopment #Uzbekistan #TechSolutions
+#PremiumSoft #eGovernment #Uzbekistan #Fergana #TechSolutions
     """
     return info_text.strip()
 
@@ -122,51 +129,87 @@ def get_company_knowledge_base():
 PremiumSoft.uz Company Knowledge Base:
 
 COMPANY OVERVIEW:
-- Name: PremiumSoft.uz
-- Type: Software Development Company
-- Location: Tashkent, Uzbekistan
-- Specialization: Premium software solutions for businesses
-- Motto: "неограниченное премиальное сотрудничество и передовые программные решения" (Unlimited premium cooperation and advanced software solutions)
+- Official Name: PremiumSoft.uz
+- Official Status: Official brand of the Center for Development of Electronic Government under the Fergana Region administration
+- Established: 2008 (15+ years of experience)
+- Team Size: Over 30 highly qualified programmers
+- Location: Fergana Region, Uzbekistan
+- Authority: Fergana Regional Administration
+- Specialization: E-government solutions, web development, mobile apps
 
-SERVICES OFFERED:
-1. Custom Software Development
-2. Web Application Development (React, Vue.js, Angular, HTML5/CSS3)
-3. Mobile App Development (iOS & Android, React Native, Flutter, Swift, Kotlin)
-4. E-commerce Solutions
-5. Database Design & Management (PostgreSQL, MySQL, MongoDB)
-6. Cloud Solutions & Migration (AWS, Google Cloud, Azure)
-7. IT Consulting & Support
-8. UI/UX Design Services
+TRACK RECORD & ACHIEVEMENTS:
+- 100+ websites delivered
+- 40+ mobile applications developed
+- 25+ information systems created
+- Serves both government and private sector clients
+- 15+ years of continuous operation since 2008
 
-TECHNOLOGIES:
-Frontend: React, Vue.js, Angular, HTML5/CSS3
-Backend: Node.js, Python, PHP, Java
-Mobile: React Native, Flutter, Swift, Kotlin
-Databases: PostgreSQL, MySQL, MongoDB
-Cloud: AWS, Google Cloud, Azure
+CORE SERVICES:
+1. Website Development: Custom sites with unique designs, content management systems, e-commerce features
+2. Mobile Applications: Apps for Android, iOS, and Windows; published on Google Play and App Store
+3. Telegram & Web Bots: Automated conversational solutions across platforms
+4. UX/UI Design: Creative design for websites, systems, apps, banners, presentation materials
+5. Logo & Branding: Business identity and advertising design
+6. Domain & Hosting: Affordable hosting and domain services in Uzbekistan, free domain registration when hosting exceeds 1 GB, 24/7 support
 
-TEAM MEMBERS:
-- Muhammad Aziz Mamasodikov: Mobile Developer, experienced in leading development for multiple startups and projects of various sizes, helps startups translate business requirements into functional software
+NOTABLE PROJECTS:
+1. e-App: Electronic appeals portal enabling citizens to submit feedback to government bodies efficiently (Fergana regional administration)
+2. Inter Faol Murojaat: Platform for physical and legal persons to submit electronic, interactive appeals to government agencies
+3. My Fergana Interactive Portal: Web portal offering electronic services for citizens and businesses - modern e-government tool
+4. E-Tahlil Mobile App: Mobile tool presenting daily activity data from sector leaders, allowing public commentary and feedback
+5. MM-Baza Dashboard: System for real-time monitoring of work schedules and completed tasks across public and private organizations
+6. Med KPI (July 2024): Healthcare staff rating system using patient feedback to evaluate medical personnel and facilities
 
-COMPANY VALUES:
-- Expert team of developers
-- Agile development methodology
+LEADERSHIP & MANAGEMENT TEAM:
+- Sirojiddin Maxmudov: Team Leader
+- Muxtorov Abdullajon: Project Manager
+- Solijon Abdurakhmonov: First Deputy
+- Feruza Tolipova: Chief Accountant
+- Bakhrom Jalilov: Director of RTM
+
+TECHNICAL EXPERTS & DEVELOPERS:
+- Mikhail Domozhirov: Full-stack Developer
+- Otabek Ahmadjonov: Backend Team Lead
+- Zokirjon Kholikov: Frontend Team Lead
+- Nodirbek Abdumansurov: Frontend Developer
+- Odiljon Sultonov: Backend Developer
+- Abbosbek Mahmudjonov: Frontend Developer
+
+MOBILE DEVELOPMENT TEAM:
+- Muhammadaziz Mamasodikov: Mobile Team Lead (experienced in leading development for multiple startups and projects, helps translate business requirements into functional software)
+- Akmaljon Sotvoldiev: Mobile Developer
+
+DESIGN & UX/UI TEAM:
+- Inomjon Abduvahobov: UX/UI Designer
+
+SUPPORT & SPECIALISTS:
+- Sodirjon Abdurakhmonov: IT Specialist
+- Oybek Akbarov: Call Center Specialist
+- Nuriddin Juraev: Technical Specialist
+
+COMPANY VALUES & APPROACH:
+- Government-backed credibility and authority
+- Expert team of over 30 qualified programmers
+- E-government specialization with private sector expertise
+- Proven track record with major government projects
 - 24/7 technical support
-- Competitive pricing
-- On-time project delivery
-- Post-launch maintenance
+- Comprehensive IT solutions from design to deployment
+- Focus on both public and private sector needs
 
-CONTACT:
+CONTACT INFORMATION:
 Website: https://premiumsoft.uz
 Email: info@premiumsoft.uz
-LinkedIn: https://www.linkedin.com/company/premium-soft-uz
-Location: Tashkent, Uzbekistan
+Location: Fergana Region, Uzbekistan
+Authority: Center for Development of Electronic Government, Fergana Regional Administration
 
-BUSINESS APPROACH:
-- Helps startups and businesses of all sizes
-- Translates business requirements into functional software
-- Focuses on premium quality solutions
-- Provides ongoing support and maintenance
+BUSINESS FOCUS:
+- E-government solutions and digital transformation
+- Government agency digital services
+- Private sector IT solutions
+- Mobile-first approach for citizen services
+- Real-time monitoring and feedback systems
+- Healthcare technology solutions
+- Interactive citizen engagement platforms
 """
 
 def get_ai_response(user_message, user_name="User"):
@@ -181,6 +224,8 @@ def get_ai_response(user_message, user_name="User"):
 {get_company_knowledge_base()}
 
 Your role:
+- Your name is OptimusPremium
+- Your developer is Muhammad Aziz Mamasodikov, Software engineer at PremiumSoft.uz
 - Answer questions about PremiumSoft.uz services, team, and capabilities
 - Help potential clients understand what the company offers
 - Provide technical guidance related to software development
