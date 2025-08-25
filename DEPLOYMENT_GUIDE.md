@@ -1,6 +1,6 @@
 # 🚀 Vercel Deployment Guide for PremiumSoft.uz Telegram Bot
 
-## ✅ What Was Fixed
+## ✅ What Was Fixed & Enhanced
 
 The original bot code used `BaseHTTPRequestHandler` which is designed for traditional servers, but **Vercel is serverless** and requires a different approach.
 
@@ -10,6 +10,9 @@ The original bot code used `BaseHTTPRequestHandler` which is designed for tradit
 3. **Added comprehensive error handling**
 4. **Created test suite with 100% pass rate**
 5. **Improved security and validation**
+6. **🤖 NEW: Added AI-powered chatbot capabilities using Groq's free Llama3 model**
+7. **📚 NEW: Comprehensive company knowledge base with team information**
+8. **💬 NEW: Natural language conversations about PremiumSoft.uz**
 
 ## 📁 Current File Structure
 
@@ -27,10 +30,17 @@ face-recognition-api/
 ## 🔧 Deployment Steps
 
 ### 1. Environment Variables
-Set this in your Vercel dashboard:
+Set these in your Vercel dashboard:
 ```
 TELEGRAM_BOT_TOKEN=8018149559:AAHap1B8ohX2-dof1r2mpXujkR8TY9ezz84
+GROQ_API_KEY=your_groq_api_key_here
 ```
+
+**🤖 To get a free Groq API key:**
+1. Visit: https://console.groq.com/
+2. Sign up for free account
+3. Create API key
+4. Or run: `python3 get_groq_key.py` for guided setup
 
 ### 2. Deploy to Vercel
 ```bash
@@ -83,12 +93,21 @@ https://your-app.vercel.app/api/telegram?test-bot
 
 ## 🤖 Bot Features
 
-### Commands:
-- `/start` - Welcome message
+### 🆕 AI-Powered Commands:
+- `/start` - Welcome message with AI status
 - `/info` - Detailed company information
-- `/help` - Available commands
+- `/help` - Available commands and AI capabilities
+- `/ai` - Check AI chat status
+- **Any message** - AI-powered response about PremiumSoft.uz
 
-### Endpoints:
+### 💬 AI Capabilities:
+- **Smart Conversations**: Natural chat about company services
+- **Team Information**: Knows about Muhammad Aziz Mamasodikov and team
+- **Technical Guidance**: Helps with software development questions
+- **Company Knowledge**: Comprehensive information about PremiumSoft.uz
+- **Fallback Support**: Works even when AI is unavailable
+
+### 🌐 Endpoints:
 - `GET /api/telegram` - Bot status
 - `GET /api/telegram?setup-webhook` - Set up webhook
 - `GET /api/telegram?test-bot` - Test bot connectivity

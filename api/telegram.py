@@ -11,6 +11,21 @@ logger = logging.getLogger(__name__)
 
 # Get environment variables
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+
+# Try to import Groq for AI functionality
+try:
+    from groq import Groq
+    AI_AVAILABLE = True
+    if GROQ_API_KEY:
+        groq_client = Groq(api_key=GROQ_API_KEY)
+    else:
+        groq_client = None
+        logger.warning("GROQ_API_KEY not set - AI features disabled")
+except ImportError:
+    AI_AVAILABLE = False
+    groq_client = None
+    logger.warning("Groq not installed - AI features disabled")
 
 def send_telegram_message(chat_id, text, parse_mode=None):
     """Send a message to a Telegram chat."""
@@ -83,6 +98,11 @@ PremiumSoft.uz is a leading software development company in Uzbekistan, speciali
 ✅ On-time project delivery
 ✅ Post-launch maintenance
 
+👥 *Team Members*
+• Muhammad Aziz Mamasodikov - Mobile Developer (Led development for multiple startups)
+• Expert developers specializing in various technologies
+• Experienced project managers and consultants
+
 📞 *Contact Information*
 🌐 Website: https://premiumsoft.uz
 📧 Email: info@premiumsoft.uz
@@ -95,6 +115,99 @@ Ready to transform your business with premium software solutions? Contact us tod
 #PremiumSoft #SoftwareDevelopment #Uzbekistan #TechSolutions
     """
     return info_text.strip()
+
+def get_company_knowledge_base():
+    """Get comprehensive knowledge base about PremiumSoft.uz for AI context."""
+    return """
+PremiumSoft.uz Company Knowledge Base:
+
+COMPANY OVERVIEW:
+- Name: PremiumSoft.uz
+- Type: Software Development Company
+- Location: Tashkent, Uzbekistan
+- Specialization: Premium software solutions for businesses
+- Motto: "неограниченное премиальное сотрудничество и передовые программные решения" (Unlimited premium cooperation and advanced software solutions)
+
+SERVICES OFFERED:
+1. Custom Software Development
+2. Web Application Development (React, Vue.js, Angular, HTML5/CSS3)
+3. Mobile App Development (iOS & Android, React Native, Flutter, Swift, Kotlin)
+4. E-commerce Solutions
+5. Database Design & Management (PostgreSQL, MySQL, MongoDB)
+6. Cloud Solutions & Migration (AWS, Google Cloud, Azure)
+7. IT Consulting & Support
+8. UI/UX Design Services
+
+TECHNOLOGIES:
+Frontend: React, Vue.js, Angular, HTML5/CSS3
+Backend: Node.js, Python, PHP, Java
+Mobile: React Native, Flutter, Swift, Kotlin
+Databases: PostgreSQL, MySQL, MongoDB
+Cloud: AWS, Google Cloud, Azure
+
+TEAM MEMBERS:
+- Muhammad Aziz Mamasodikov: Mobile Developer, experienced in leading development for multiple startups and projects of various sizes, helps startups translate business requirements into functional software
+
+COMPANY VALUES:
+- Expert team of developers
+- Agile development methodology
+- 24/7 technical support
+- Competitive pricing
+- On-time project delivery
+- Post-launch maintenance
+
+CONTACT:
+Website: https://premiumsoft.uz
+Email: info@premiumsoft.uz
+LinkedIn: https://www.linkedin.com/company/premium-soft-uz
+Location: Tashkent, Uzbekistan
+
+BUSINESS APPROACH:
+- Helps startups and businesses of all sizes
+- Translates business requirements into functional software
+- Focuses on premium quality solutions
+- Provides ongoing support and maintenance
+"""
+
+def get_ai_response(user_message, user_name="User"):
+    """Get AI response using Groq API."""
+    if not groq_client:
+        return "🤖 AI features are currently unavailable. Please use /info for company information or /help for available commands."
+
+    try:
+        # Create context with company information
+        system_prompt = f"""You are an AI assistant for PremiumSoft.uz, a software development company in Uzbekistan.
+
+{get_company_knowledge_base()}
+
+Your role:
+- Answer questions about PremiumSoft.uz services, team, and capabilities
+- Help potential clients understand what the company offers
+- Provide technical guidance related to software development
+- Be friendly, professional, and knowledgeable
+- If asked about something not related to PremiumSoft.uz or software development, politely redirect to company topics
+- Always be helpful and encourage potential clients to contact the company
+
+User's name: {user_name}
+"""
+
+        # Get AI response
+        chat_completion = groq_client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ],
+            model="llama3-8b-8192",  # Free model
+            max_tokens=500,
+            temperature=0.7
+        )
+
+        response = chat_completion.choices[0].message.content
+        return response
+
+    except Exception as e:
+        logger.error(f"AI response error: {e}")
+        return "🤖 I'm having trouble processing your request right now. Please try again or use /info for company information."
 
 def handle_message(message):
     """Handle a message from Telegram."""
@@ -110,8 +223,25 @@ def handle_message(message):
 
     # Handle /start command
     if text == '/start':
-        welcome_text = f"👋 Hello {user_name}!\n\nWelcome to PremiumSoft.uz Info Bot!\n\nUse /info to get detailed information about our company and services."
-        send_telegram_message(chat_id, welcome_text)
+        ai_status = "🤖 AI Chat: ✅ Available" if groq_client else "🤖 AI Chat: ❌ Unavailable"
+        welcome_text = f"""👋 Hello {user_name}!
+
+Welcome to PremiumSoft.uz AI-Powered Info Bot!
+
+🚀 *What I can do:*
+• Answer questions about PremiumSoft.uz
+• Provide detailed company information
+• Help with technical inquiries
+• Chat about our services and team
+
+{ai_status}
+
+💬 *Just ask me anything about PremiumSoft.uz!*
+Or use these commands:
+• /info - Company overview
+• /help - Available commands
+• /ai - AI chat status"""
+        send_telegram_message(chat_id, welcome_text, parse_mode="Markdown")
 
     # Handle /info command
     elif text == '/info':
@@ -120,22 +250,78 @@ def handle_message(message):
 
     # Handle /help command
     elif text == '/help':
-        help_text = """
-🤖 *PremiumSoft.uz Info Bot*
+        ai_status = "✅ Available - Just ask me anything!" if groq_client else "❌ Currently unavailable"
+        help_text = f"""
+🤖 *PremiumSoft.uz AI Info Bot*
 
-Available commands:
-/start - Start the bot
-/info - Get detailed information about PremiumSoft.uz
+*Available commands:*
+/start - Start the bot and see welcome message
+/info - Get detailed company information
 /help - Show this help message
+/ai - Check AI chat status
 
-For more information about our services, use the /info command.
+*AI Chat:* {ai_status}
+
+💬 *How to use:*
+Just type any question about PremiumSoft.uz and I'll answer using AI!
+
+*Examples:*
+• "Tell me about your mobile development services"
+• "Who are your team members?"
+• "What technologies do you use?"
+• "How can you help my startup?"
         """
         send_telegram_message(chat_id, help_text.strip(), parse_mode="Markdown")
 
-    # Handle other messages
+    # Handle /ai command
+    elif text == '/ai':
+        if groq_client:
+            ai_text = """🤖 *AI Chat Status: ✅ ACTIVE*
+
+I'm powered by Groq's Llama3 AI model and have comprehensive knowledge about:
+
+📋 *What I know about PremiumSoft.uz:*
+• All services and technologies
+• Team members and their expertise
+• Company values and approach
+• Contact information and location
+
+💬 *How to chat with me:*
+Just ask me anything! No special commands needed.
+
+*Try asking:*
+• "What mobile technologies do you use?"
+• "Tell me about Muhammad Aziz"
+• "How can you help my e-commerce project?"
+• "What's your development process?"
+"""
+        else:
+            ai_text = """🤖 *AI Chat Status: ❌ UNAVAILABLE*
+
+AI features are currently disabled. This could be because:
+• Groq API key is not configured
+• Service is temporarily unavailable
+
+📋 *Available alternatives:*
+• Use /info for detailed company information
+• Contact us directly at info@premiumsoft.uz
+• Visit our website: https://premiumsoft.uz
+
+The bot will still work for basic information!"""
+
+        send_telegram_message(chat_id, ai_text, parse_mode="Markdown")
+
+    # Handle all other messages with AI
     else:
-        response_text = f"Hello {user_name}! 👋\n\nI'm the PremiumSoft.uz info bot. Use /info to learn about our company and services.\n\nAvailable commands:\n• /start - Start the bot\n• /info - Company information\n• /help - Help message"
-        send_telegram_message(chat_id, response_text)
+        # Check if it's a command we don't recognize
+        if text.startswith('/'):
+            response_text = f"❓ Unknown command: {text}\n\nUse /help to see available commands or just ask me anything about PremiumSoft.uz!"
+            send_telegram_message(chat_id, response_text)
+        else:
+            # Use AI to respond to the message
+            logger.info(f"Processing AI request from {user_name}: {text}")
+            ai_response = get_ai_response(text, user_name)
+            send_telegram_message(chat_id, ai_response)
 
 def setup_webhook(host, custom_url=None):
     """Set up webhook for the bot."""
