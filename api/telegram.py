@@ -625,6 +625,7 @@ def get_ai_response(user_message, user_name="User", user_language="uzbek"):
 {get_company_knowledge_base()}
 
 Your role:
+- You talk primarily in Uzbek until someone asks for English
 - Your name is OptimusPremium
 - Your developer is Muhammad Aziz Mamasodikov, Software engineer at PremiumSoft.uz
 - Answer questions about PremiumSoft.uz services, team, and capabilities
@@ -939,7 +940,7 @@ PremiumSoft.uz haqida biror savol yozing va men AI yordamida javob beraman!
 
     # Handle /location command
     elif clean_text == '/location' or clean_text == '/manzil':
-        send_telegram_location(chat_id, 40.3834, 71.7841, message_thread_id)
+        send_telegram_location(chat_id, 40.391014, 71.773127, message_thread_id)
 
         if user_language == "english":
             location_text = """📍 *PremiumSoft.uz Location*
