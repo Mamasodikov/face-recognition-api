@@ -34,6 +34,8 @@ Set these in your Vercel dashboard:
 ```
 TELEGRAM_BOT_TOKEN=8018149559:AAHap1B8ohX2-dof1r2mpXujkR8TY9ezz84
 GROQ_API_KEY=your_groq_api_key_here
+TELEGRAM_CHAT_ID=-1002063224194
+TELEGRAM_TOPIC_ID=918
 ```
 
 **🤖 To get a free Groq API key:**
