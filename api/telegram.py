@@ -1,3 +1,4 @@
+from http.server import BaseHTTPRequestHandler
 import json
 import os
 import requests
@@ -136,7 +137,6 @@ For more information about our services, use the /info command.
         response_text = f"Hello {user_name}! 👋\n\nI'm the PremiumSoft.uz info bot. Use /info to learn about our company and services.\n\nAvailable commands:\n• /start - Start the bot\n• /info - Company information\n• /help - Help message"
         send_telegram_message(chat_id, response_text)
 
-
 def setup_webhook(host, custom_url=None):
     """Set up webhook for the bot."""
     if not BOT_TOKEN:
@@ -172,7 +172,6 @@ def setup_webhook(host, custom_url=None):
         logger.error(f"Error setting webhook: {e}")
         return {"error": str(e)}
 
-
 def test_bot():
     """Test bot connectivity."""
     if not BOT_TOKEN:
@@ -198,13 +197,16 @@ def test_bot():
         logger.error(f"Error testing bot: {e}")
         return {"error": str(e)}
 
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        """Handle GET requests."""
+        try:
+            # Send headers
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
 
-def handler(request, response):
-    """Main Vercel handler function."""
-    try:
-        # Handle GET requests
-        if request.method == 'GET':
-            # Basic status endpoint
+            # Basic status
             response_text = '✅ PremiumSoft.uz Info Bot is active on Vercel!\n'
 
             if BOT_TOKEN:
@@ -212,24 +214,35 @@ def handler(request, response):
             else:
                 response_text += "❌ WARNING: Bot token is not configured!\n"
 
-            # Check for specific endpoints in query parameters
-            if 'setup-webhook' in request.url:
-                host = request.headers.get('host', 'unknown-host')
+            # Handle specific endpoints
+            if 'setup-webhook' in self.path:
+                host = self.headers.get('Host', 'unknown-host')
                 result = setup_webhook(host)
                 response_text += f"\nWebhook setup result: {json.dumps(result)}"
 
-            elif 'test-bot' in request.url:
+            elif 'test-bot' in self.path:
                 result = test_bot()
                 response_text += f"\nBot test result: {json.dumps(result)}"
 
-            response.status(200).send(response_text)
-            return
+            self.wfile.write(response_text.encode())
 
-        # Handle POST requests (Telegram webhooks)
-        elif request.method == 'POST':
-            try:
-                # Get request body
-                update = request.json()
+        except Exception as e:
+            logger.error(f"GET error: {e}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(f'Error: {str(e)}'.encode())
+
+    def do_POST(self):
+        """Handle POST requests (Telegram webhooks)."""
+        try:
+            # Get content length
+            content_length = int(self.headers.get('Content-Length', 0))
+
+            if content_length > 0:
+                # Read request body
+                post_data = self.rfile.read(content_length)
+                update = json.loads(post_data.decode('utf-8'))
 
                 logger.info("Received Telegram update")
 
@@ -239,19 +252,16 @@ def handler(request, response):
                 else:
                     logger.info("Received non-message update (ignored)")
 
-                response.status(200).send('OK')
-                return
+            # Send OK response
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write('OK'.encode())
 
-            except Exception as e:
-                logger.error(f"Error processing update: {e}")
-                response.status(200).send('OK')
-                return
-
-        else:
-            response.status(405).send('Method Not Allowed')
-            return
-
-    except Exception as e:
-        logger.error(f"Handler error: {e}")
-        response.status(500).send('Internal Server Error')
-        return
+        except Exception as e:
+            logger.error(f"POST error: {e}")
+            # Still send 200 to prevent Telegram retries
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write('OK'.encode())
